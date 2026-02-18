@@ -1,0 +1,5 @@
+  File "/home/tom/Documents/Dog_Fight/install/object_detection/lib/python3.10/site-packages/object_detection/gps_tracker.py", line 78
+    ağ kolum uyuşuyor neden
+        ^^^^^
+SyntaxError: invalid syntax
+

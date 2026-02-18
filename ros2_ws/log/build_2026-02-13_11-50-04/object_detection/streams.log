@@ -1,0 +1,27 @@
+[0.465s] Invoking command in '/home/tom/Documents/Dog_Fight/ros2_ws/src/object_detection': PYTHONPATH=/home/tom/Documents/Dog_Fight/ros2_ws/build/object_detection/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/tom/Documents/Dog_Fight/ros2_ws/install/object_detection/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/object_detection build --build-base /home/tom/Documents/Dog_Fight/ros2_ws/build/object_detection/build install --record /home/tom/Documents/Dog_Fight/ros2_ws/build/object_detection/install.log --single-version-externally-managed install_data
+[0.614s] running egg_info
+[0.623s] writing ../../build/object_detection/object_detection.egg-info/PKG-INFO
+[0.624s] writing dependency_links to ../../build/object_detection/object_detection.egg-info/dependency_links.txt
+[0.624s] writing entry points to ../../build/object_detection/object_detection.egg-info/entry_points.txt
+[0.624s] writing requirements to ../../build/object_detection/object_detection.egg-info/requires.txt
+[0.624s] writing top-level names to ../../build/object_detection/object_detection.egg-info/top_level.txt
+[0.645s] reading manifest file '../../build/object_detection/object_detection.egg-info/SOURCES.txt'
+[0.647s] writing manifest file '../../build/object_detection/object_detection.egg-info/SOURCES.txt'
+[0.647s] running build
+[0.647s] running build_py
+[0.647s] copying object_detection/__init__.py -> /home/tom/Documents/Dog_Fight/ros2_ws/build/object_detection/build/lib/object_detection
+[0.648s] copying object_detection/cam.py -> /home/tom/Documents/Dog_Fight/ros2_ws/build/object_detection/build/lib/object_detection
+[0.648s] running install
+[0.652s] running install_lib
+[0.662s] copying /home/tom/Documents/Dog_Fight/ros2_ws/build/object_detection/build/lib/object_detection/cam.py -> /home/tom/Documents/Dog_Fight/ros2_ws/install/object_detection/lib/python3.10/site-packages/object_detection
+[0.662s] byte-compiling /home/tom/Documents/Dog_Fight/ros2_ws/install/object_detection/lib/python3.10/site-packages/object_detection/cam.py to cam.cpython-310.pyc
+[0.663s] running install_data
+[0.663s] copying resource/object_detection -> /home/tom/Documents/Dog_Fight/ros2_ws/install/object_detection/share/ament_index/resource_index/packages
+[0.663s] copying package.xml -> /home/tom/Documents/Dog_Fight/ros2_ws/install/object_detection/share/object_detection
+[0.663s] running install_egg_info
+[0.673s] removing '/home/tom/Documents/Dog_Fight/ros2_ws/install/object_detection/lib/python3.10/site-packages/object_detection-0.0.0-py3.10.egg-info' (and everything under it)
+[0.674s] Copying ../../build/object_detection/object_detection.egg-info to /home/tom/Documents/Dog_Fight/ros2_ws/install/object_detection/lib/python3.10/site-packages/object_detection-0.0.0-py3.10.egg-info
+[0.674s] running install_scripts
+[0.695s] Installing test_cam script to /home/tom/Documents/Dog_Fight/ros2_ws/install/object_detection/lib/object_detection
+[0.695s] writing list of installed files to '/home/tom/Documents/Dog_Fight/ros2_ws/build/object_detection/install.log'
+[0.709s] Invoked command in '/home/tom/Documents/Dog_Fight/ros2_ws/src/object_detection' returned '0': PYTHONPATH=/home/tom/Documents/Dog_Fight/ros2_ws/build/object_detection/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/tom/Documents/Dog_Fight/ros2_ws/install/object_detection/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/object_detection build --build-base /home/tom/Documents/Dog_Fight/ros2_ws/build/object_detection/build install --record /home/tom/Documents/Dog_Fight/ros2_ws/build/object_detection/install.log --single-version-externally-managed install_data

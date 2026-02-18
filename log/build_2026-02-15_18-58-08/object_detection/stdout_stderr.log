@@ -1,0 +1,35 @@
+running egg_info
+writing ../../../build/object_detection/object_detection.egg-info/PKG-INFO
+writing dependency_links to ../../../build/object_detection/object_detection.egg-info/dependency_links.txt
+writing entry points to ../../../build/object_detection/object_detection.egg-info/entry_points.txt
+writing requirements to ../../../build/object_detection/object_detection.egg-info/requires.txt
+writing top-level names to ../../../build/object_detection/object_detection.egg-info/top_level.txt
+reading manifest file '../../../build/object_detection/object_detection.egg-info/SOURCES.txt'
+writing manifest file '../../../build/object_detection/object_detection.egg-info/SOURCES.txt'
+running build
+running build_py
+copying object_detection/hareket_kontrol_drone.py -> /home/tom/Documents/Dog_Fight/build/object_detection/build/lib/object_detection
+copying object_detection/cap_denem.py -> /home/tom/Documents/Dog_Fight/build/object_detection/build/lib/object_detection
+copying object_detection/__init__.py -> /home/tom/Documents/Dog_Fight/build/object_detection/build/lib/object_detection
+copying object_detection/ucak_takip_goruntu_ile.py -> /home/tom/Documents/Dog_Fight/build/object_detection/build/lib/object_detection
+copying object_detection/gps_tracker.py -> /home/tom/Documents/Dog_Fight/build/object_detection/build/lib/object_detection
+copying object_detection/Algilama.py -> /home/tom/Documents/Dog_Fight/build/object_detection/build/lib/object_detection
+copying object_detection/ilk_test_kodu.py -> /home/tom/Documents/Dog_Fight/build/object_detection/build/lib/object_detection
+copying object_detection/Gps_Takip.py -> /home/tom/Documents/Dog_Fight/build/object_detection/build/lib/object_detection
+copying object_detection/Manuel_konumlanma.py -> /home/tom/Documents/Dog_Fight/build/object_detection/build/lib/object_detection
+copying object_detection/yolo_detection_node.py -> /home/tom/Documents/Dog_Fight/build/object_detection/build/lib/object_detection
+copying object_detection/cam.py -> /home/tom/Documents/Dog_Fight/build/object_detection/build/lib/object_detection
+copying object_detection/webm_to_mp4.py -> /home/tom/Documents/Dog_Fight/build/object_detection/build/lib/object_detection
+running install
+running install_lib
+byte-compiling /home/tom/Documents/Dog_Fight/install/object_detection/lib/python3.10/site-packages/object_detection/gps_tracker.py to gps_tracker.cpython-310.pyc
+Sorry: IndentationError: unexpected indent (gps_tracker.py, line 215)
+running install_data
+copying resource/object_detection -> /home/tom/Documents/Dog_Fight/install/object_detection/share/ament_index/resource_index/packages
+copying package.xml -> /home/tom/Documents/Dog_Fight/install/object_detection/share/object_detection
+running install_egg_info
+removing '/home/tom/Documents/Dog_Fight/install/object_detection/lib/python3.10/site-packages/object_detection-0.0.0-py3.10.egg-info' (and everything under it)
+Copying ../../../build/object_detection/object_detection.egg-info to /home/tom/Documents/Dog_Fight/install/object_detection/lib/python3.10/site-packages/object_detection-0.0.0-py3.10.egg-info
+running install_scripts
+Installing test_cam script to /home/tom/Documents/Dog_Fight/install/object_detection/lib/object_detection
+writing list of installed files to '/home/tom/Documents/Dog_Fight/build/object_detection/install.log'

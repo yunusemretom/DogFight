@@ -1,0 +1,37 @@
+[0.521s] Invoking command in '/home/tom/Documents/Dog_Fight/ros2_ws/src/object_detection': PYTHONPATH=/home/tom/Documents/Dog_Fight/build/object_detection/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/tom/Documents/Dog_Fight/install/object_detection/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../../build/object_detection build --build-base /home/tom/Documents/Dog_Fight/build/object_detection/build install --record /home/tom/Documents/Dog_Fight/build/object_detection/install.log --single-version-externally-managed install_data
+[0.673s] running egg_info
+[0.682s] writing ../../../build/object_detection/object_detection.egg-info/PKG-INFO
+[0.683s] writing dependency_links to ../../../build/object_detection/object_detection.egg-info/dependency_links.txt
+[0.683s] writing entry points to ../../../build/object_detection/object_detection.egg-info/entry_points.txt
+[0.683s] writing requirements to ../../../build/object_detection/object_detection.egg-info/requires.txt
+[0.683s] writing top-level names to ../../../build/object_detection/object_detection.egg-info/top_level.txt
+[0.704s] reading manifest file '../../../build/object_detection/object_detection.egg-info/SOURCES.txt'
+[0.706s] writing manifest file '../../../build/object_detection/object_detection.egg-info/SOURCES.txt'
+[0.706s] running build
+[0.706s] running build_py
+[0.706s] copying object_detection/hareket_kontrol_drone.py -> /home/tom/Documents/Dog_Fight/build/object_detection/build/lib/object_detection
+[0.706s] copying object_detection/cap_denem.py -> /home/tom/Documents/Dog_Fight/build/object_detection/build/lib/object_detection
+[0.706s] copying object_detection/__init__.py -> /home/tom/Documents/Dog_Fight/build/object_detection/build/lib/object_detection
+[0.706s] copying object_detection/ucak_takip_goruntu_ile.py -> /home/tom/Documents/Dog_Fight/build/object_detection/build/lib/object_detection
+[0.706s] copying object_detection/gps_tracker.py -> /home/tom/Documents/Dog_Fight/build/object_detection/build/lib/object_detection
+[0.706s] copying object_detection/Algilama.py -> /home/tom/Documents/Dog_Fight/build/object_detection/build/lib/object_detection
+[0.706s] copying object_detection/ilk_test_kodu.py -> /home/tom/Documents/Dog_Fight/build/object_detection/build/lib/object_detection
+[0.706s] copying object_detection/Gps_Takip.py -> /home/tom/Documents/Dog_Fight/build/object_detection/build/lib/object_detection
+[0.706s] copying object_detection/Manuel_konumlanma.py -> /home/tom/Documents/Dog_Fight/build/object_detection/build/lib/object_detection
+[0.706s] copying object_detection/yolo_detection_node.py -> /home/tom/Documents/Dog_Fight/build/object_detection/build/lib/object_detection
+[0.706s] copying object_detection/cam.py -> /home/tom/Documents/Dog_Fight/build/object_detection/build/lib/object_detection
+[0.706s] copying object_detection/webm_to_mp4.py -> /home/tom/Documents/Dog_Fight/build/object_detection/build/lib/object_detection
+[0.707s] running install
+[0.709s] running install_lib
+[0.720s] byte-compiling /home/tom/Documents/Dog_Fight/install/object_detection/lib/python3.10/site-packages/object_detection/gps_tracker.py to gps_tracker.cpython-310.pyc
+[0.721s] Sorry: IndentationError: unexpected indent (gps_tracker.py, line 215)
+[0.721s] running install_data
+[0.721s] copying resource/object_detection -> /home/tom/Documents/Dog_Fight/install/object_detection/share/ament_index/resource_index/packages
+[0.721s] copying package.xml -> /home/tom/Documents/Dog_Fight/install/object_detection/share/object_detection
+[0.721s] running install_egg_info
+[0.732s] removing '/home/tom/Documents/Dog_Fight/install/object_detection/lib/python3.10/site-packages/object_detection-0.0.0-py3.10.egg-info' (and everything under it)
+[0.732s] Copying ../../../build/object_detection/object_detection.egg-info to /home/tom/Documents/Dog_Fight/install/object_detection/lib/python3.10/site-packages/object_detection-0.0.0-py3.10.egg-info
+[0.732s] running install_scripts
+[0.753s] Installing test_cam script to /home/tom/Documents/Dog_Fight/install/object_detection/lib/object_detection
+[0.754s] writing list of installed files to '/home/tom/Documents/Dog_Fight/build/object_detection/install.log'
+[0.767s] Invoked command in '/home/tom/Documents/Dog_Fight/ros2_ws/src/object_detection' returned '0': PYTHONPATH=/home/tom/Documents/Dog_Fight/build/object_detection/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/tom/Documents/Dog_Fight/install/object_detection/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../../build/object_detection build --build-base /home/tom/Documents/Dog_Fight/build/object_detection/build install --record /home/tom/Documents/Dog_Fight/build/object_detection/install.log --single-version-externally-managed install_data
