@@ -41,8 +41,9 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy, QoSDurabilityPolicy
 
 from px4_msgs.msg import OffboardControlMode
-from px4_msgs.msg import TrajectorySetpoint,ActuatorMotors
+from px4_msgs.msg import TrajectorySetpoint
 from px4_msgs.msg import VehicleStatus
+from px4_msgs.msg import VehicleAttitudeSetpoint
 import math
 
 class OffboardControl(Node):
@@ -75,9 +76,9 @@ class OffboardControl(Node):
             '/px4_1/fmu/out/vehicle_status_v1',
             self.vehicle_status_callback,
             qos_profile_sub)
+        self.attitude_pub = self.create_publisher(VehicleAttitudeSetpoint, '/px4_1/fmu/in/vehicle_attitude_setpoint_v1', qos_profile_pub)
         self.publisher_offboard_mode = self.create_publisher(OffboardControlMode, '/px4_1/fmu/in/offboard_control_mode', qos_profile_pub)
         self.publisher_trajectory = self.create_publisher(TrajectorySetpoint, '/px4_1/fmu/in/trajectory_setpoint', qos_profile_pub)
-        self.publisher_actuator = self.create_publisher(ActuatorMotors, '/px4_1/fmu/in/actuator_motors', qos_profile_pub)
         timer_period = 0.02  # seconds
         self.timer = self.create_timer(timer_period, self.cmdloop_callback)
         self.dt = timer_period
@@ -92,6 +93,7 @@ class OffboardControl(Node):
         self.radius = self.get_parameter('radius').value
         self.omega = self.get_parameter('omega').value
         self.altitude = self.get_parameter('altitude').value
+        self.hiz=0.5
 
     def vehicle_status_callback(self, msg):
         # TODO: handle NED->ENU transformation
@@ -99,27 +101,60 @@ class OffboardControl(Node):
         print("  - offboard status: ", VehicleStatus.NAVIGATION_STATE_OFFBOARD)
         self.nav_state = msg.nav_state
         self.arming_state = msg.arming_state
+    def euler_to_quaternion(self, roll, pitch, yaw):
+        """
+        roll, pitch, yaw -> radian
+        PX4 quaternion sırası: [w, x, y, z]
+        """
+        cy = math.cos(yaw * 0.5)
+        sy = math.sin(yaw * 0.5)
+        cp = math.cos(pitch * 0.5)
+        sp = math.sin(pitch * 0.5)
+        cr = math.cos(roll * 0.5)
+        sr = math.sin(roll * 0.5)
 
+        w = cr * cp * cy + sr * sp * sy
+        x = sr * cp * cy - cr * sp * sy
+        y = cr * sp * cy + sr * cp * sy
+        z = cr * cp * sy - sr * sp * cy
+
+        return [w, x, y, z]
+    
     def cmdloop_callback(self):
         # Publish offboard control modes
         offboard_msg = OffboardControlMode()
-        offboard_msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
+        offboard_msg.timestamp = int(self.get_clock().now().nanoseconds / 10)
         offboard_msg.position=False
-        offboard_msg.velocity=True
+        offboard_msg.velocity=False
         offboard_msg.acceleration=False
+        offboard_msg.attitude=True
+        offboard_msg.direct_actuator=False
         self.publisher_offboard_mode.publish(offboard_msg)
         if (self.nav_state == VehicleStatus.NAVIGATION_STATE_OFFBOARD and self.arming_state == VehicleStatus.ARMING_STATE_ARMED):
-
-            trajectory_msg = TrajectorySetpoint()
-            trajectory_msg.position = [math.nan,math.nan,math.nan]
-            trajectory_msg.velocity = [20 * math.cos(30), 10.0, 0.0]
-            trajectory_msg.acceleration[0] = math.nan
-            trajectory_msg.acceleration[1] = math.nan
-            trajectory_msg.acceleration[2] = math.nan
+            print("Publishing trajectory setpoint")
             
-            self.publisher_trajectory.publish(trajectory_msg)
+        
+            msg = VehicleAttitudeSetpoint()
 
+            # Örnek: pitch 10 derece yukarı
+            roll = 10.0
+            pitch = 10.0
+            yaw = 10.0
+
+            q = self.euler_to_quaternion(roll, pitch, yaw)
+
+            msg.q_d = q
+
+            # throttle (fixed wing için thrust_body[0])
+            msg.thrust_body = [1.0, 0.0, 0.0]
+
+            msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
+
+            self.attitude_pub.publish(msg)
+            
             self.theta = self.theta + self.omega * self.dt
+            
+        
 
 
 def main(args=None):
