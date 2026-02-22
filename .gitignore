@@ -1,0 +1,49 @@
+# ---- OS / Editor ----
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# JetBrains
+.idea/
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Packaging
+*.egg-info/
+dist/
+build/
+
+# ---- ROS 2 / colcon ----
+# Colcon outputs (often at workspace root)
+build/
+install/
+log/
+
+# In this repo there is also a nested workspace (ros2_ws)
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
+
+# ---- Data / logs ----
+*.bag
+*.bag.active
+*.db3
+*.db3-wal
+*.db3-shm
+gps_log_*.csv
+
+# ---- Misc ----
+*.swp
+*.swo
+*~
