@@ -1,2 +1,0 @@
-[console_scripts]
-test_cam = object_detection.cam:main
