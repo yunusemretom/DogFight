@@ -4,7 +4,7 @@ package_name = 'object_detection'
 
 setup(
     name=package_name,
-    version='0.0.0',
+    version='0.0.1',
     packages=find_packages(exclude=['test']),
     data_files=[
         ('share/ament_index/resource_index/packages',
@@ -13,7 +13,7 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='tom',
+    maintainer='Yunus Emre Tom',
     maintainer_email='yunusemretom@gmail.com',
     description='TODO: Package description',
     license='TODO: License declaration',
