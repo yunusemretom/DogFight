@@ -12,10 +12,15 @@ BUILD_DIR="$PX4_DIR/build/px4_sitl_default"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 SIMULATION_WS="$(dirname "$SCRIPT_DIR")"
 SIMULATION_MODELS="$SIMULATION_WS/models"
-WORLD_FILE="$SIMULATION_WS/worlds/iris_runway.sdf"
-
-# Hero uçak için kameralı özel model
-HERO_MODEL="rc_cessna"
+WORLD_FILE="$SIMULATION_WS/worlds/baylands.sdf"
+source ~/Desktop/PX4-Autopilot/build/px4_sitl_default/rootfs/gz_env.sh
+#PX4_DIR="${PX4_DIR:-$HOME/Desktop/PX4-Autopilot}"
+#BUILD_DIR="$PX4_DIR/build/px4_sitl_default"
+#SIMULATION_WS="/home/tom/Documents/Dog_Fight/gazebo_simulation"
+#SIMULATION_MODELS="$SIMULATION_WS/models"
+#WORLD_FILE="$SIMULATION_WS/worlds/baylands.sdf"
+ #Hero uçak için kameralı özel model
+HERO_MODEL="zephyr"
 
 AIRFRAME_ID=4003  # gz_rc_cessna
 LOG_DIR="/tmp/px4_multi_sim"
@@ -77,7 +82,7 @@ start_gazebo() {
     echo -e "${CYAN}[GAZEBO]${NC} Gazebo Harmonic başlatılıyor..."
     
     # Model path'i ayarla
-    export GZ_SIM_RESOURCE_PATH="${SIMULATION_MODELS}:${PX4_DIR}/Tools/simulation/gz/models:${PX4_DIR}/Tools/simulation/gz/worlds"
+    export GZ_SIM_RESOURCE_PATH="${SIMULATION_MODELS}:$SIMULATION_WS/worlds:${PX4_DIR}/Tools/simulation/gz/models:${PX4_DIR}/Tools/simulation/gz/worlds"
     
     # Gazebo'yu başlat
     gz sim -v 1 -r "$WORLD_FILE" > "$LOG_DIR/gazebo.log" 2>&1 &
@@ -85,7 +90,7 @@ start_gazebo() {
     
     # Gazebo'nun başlamasını bekle
     echo -e "${YELLOW}[GAZEBO]${NC} Gazebo yükleniyor (10 saniye)..."
-    sleep 10
+    sleep 20
     
     # Kontrol
     if ! pgrep -f "gz sim" > /dev/null; then
@@ -125,7 +130,7 @@ launch_aircraft() {
         export PX4_SYS_AUTOSTART=${AIRFRAME_ID}
         export PX4_GZ_MODEL="${MODEL}"
         export PX4_GZ_MODEL_POSE="${X},${Y},${Z},0,0,${YAW}"
-        export PX4_GZ_WORLD="competition"
+        export PX4_GZ_WORLD=$WORLD_FILE
         export PX4_SIM_SPEED_FACTOR=1
         export PX4_HOME_LAT=${HOME_LAT}
         export PX4_HOME_LON=${HOME_LON}
