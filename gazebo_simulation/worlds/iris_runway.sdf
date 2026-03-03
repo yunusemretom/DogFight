@@ -1,36 +1,21 @@
 <?xml version="1.0" ?>
 <sdf version="1.9">
   <world name="iris_runway">
-    <physics name="1ms" type="ignore">
-      <max_step_size>0.001</max_step_size>
+     <physics type="ode">
+      <max_step_size>0.004</max_step_size>
       <real_time_factor>1.0</real_time_factor>
+      <real_time_update_rate>250</real_time_update_rate>
     </physics>
-
-    
-  <plugins>
-    <plugin entity_name="*" entity_type="world" filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
-    <plugin entity_name="*" entity_type="world" filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
-    <plugin entity_name="*" entity_type="world" filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
-    <plugin entity_name="*" entity_type="world" filename="gz-sim-contact-system" name="gz::sim::systems::Contact"/>
-    <plugin entity_name="*" entity_type="world" filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
-    <plugin entity_name="*" entity_type="world" filename="gz-sim-air-pressure-system" name="gz::sim::systems::AirPressure"/>
-    <plugin entity_name="*" entity_type="world" filename="gz-sim-air-speed-system" name="gz::sim::systems::AirSpeed"/>
-    <plugin entity_name="*" entity_type="world" filename="gz-sim-apply-link-wrench-system" name="gz::sim::systems::ApplyLinkWrench"/>
-    <plugin entity_name="*" entity_type="world" filename="gz-sim-navsat-system" name="gz::sim::systems::NavSat"/>
-    <plugin entity_name="*" entity_type="world" filename="gz-sim-magnetometer-system" name="gz::sim::systems::Magnetometer"/>
-    <plugin entity_name="*" entity_type="world" filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
-      <render_engine>ogre2</render_engine>
-    </plugin>
-    <plugin entity_name="*" entity_type="world" filename="libOpticalFlowSystem.so" name="custom::OpticalFlowSystem"/>
-    <plugin entity_name="*" entity_type="world" filename="libGstCameraSystem.so" name="custom::GstCameraSystem"/>
-    <!-- <plugin entity_name="*" entity_type="world" filename="libTemplatePlugin.so" name="custom::TemplateSystem"/> -->
-  </plugins>
-
-
+    <gravity>0 0 -9.8</gravity>
+    <magnetic_field>6e-06 2.3e-05 -4.2e-05</magnetic_field>
+    <atmosphere type='adiabatic'/>
     <scene>
-      <ambient>1.0 1.0 1.0</ambient>
-      <background>0.8 0.8 0.8</background>
-      <sky></sky>
+      <ambient>0.8 0.5 1</ambient>
+      <grid>false</grid>
+      <sky>
+        <clouds>true</clouds>
+      </sky>
+      <shadows>1</shadows>
     </scene>
 
     <spherical_coordinates>

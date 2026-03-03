@@ -67,9 +67,9 @@ python3 ros2_ws/src/object_detection/object_detection/gps_tracker.py
 ### 🎯 YOLO ile Uçak/Drone Offboard Takip Denemeleri
 Bu repo içinde birden fazla offboard kontrol denemesi var. Bazıları YOLO’dan gelen `/yolo/target_distance` verisini subscribe ederek setpoint üretiyor.
 
-- `ros2_ws/src/object_detection/object_detection/ucak_takip_goruntu_ile.py` → YOLO ile velocity tabanlı takip denemesi
-- `ros2_ws/src/object_detection/object_detection/Gps_Takip.py` → Konum bazlı setpoint denemesi
-- `ros2_ws/src/object_detection/object_detection/Kontrol_test.py` → Attitude setpoint denemesi
+- `ros2_ws/src/object_detection/object_detection/visual_tracking_offboard.py` → YOLO ile velocity tabanlı takip denemesi
+- `ros2_ws/src/object_detection/object_detection/gps_position_control.py` → Konum bazlı setpoint denemesi
+- `ros2_ws/src/object_detection/object_detection/attitude_setpoint_control.py` → Attitude setpoint denemesi
 
 > ⚠️ Uyarı: Offboard kontrol, PX4 tarafında doğru mod/arming/parametre ayarı ve doğru topic namespace’leri gerektirir.
 
@@ -83,10 +83,11 @@ Bu repo içinde birden fazla offboard kontrol denemesi var. Bazıları YOLO’da
 	```
 
 ### 🧰 Diğer Yardımcı Script’ler
-- `ros2_ws/src/object_detection/object_detection/Algilama.py` → YOLO ile “lock / hedef kilidi” görselleştirmesi (ROS’suz, direkt OpenCV döngüsü)
-- `ros2_ws/src/object_detection/object_detection/cap_denem.py` → Kamera cihazı/format/FPS denemesi (OpenCV)
-- `ros2_ws/src/object_detection/object_detection/ilk_test_kodu.py` → PX4’e `VehicleCommand` ile ARM/MODE/TAKEOFF komut denemesi
-- `ros2_ws/src/object_detection/object_detection/Manuel_konumlanma.py` → Basit velocity setpoint denemesi
+- `ros2_ws/src/object_detection/object_detection/yolo_target_lock.py` → YOLO ile "lock / hedef kilidi" görselleştirmesi (ROS'suz, direkt OpenCV döngüsü)
+- `ros2_ws/src/object_detection/object_detection/camera_capture_test.py` → Kamera cihazı/format/FPS denemesi (OpenCV)
+- `ros2_ws/src/object_detection/object_detection/px4_arm_takeoff_test.py` → PX4'e `VehicleCommand` ile ARM/MODE/TAKEOFF komut denemesi
+- `ros2_ws/src/object_detection/object_detection/velocity_setpoint_control.py` → Basit velocity setpoint denemesi
+- `ros2_ws/src/object_detection/object_detection/yolo_visual_drone_control.py` → YOLO tabanlı drone velocity kontrolü
 
 ---
 
@@ -175,7 +176,7 @@ colcon test-result --verbose
 
 ## 🧯 Sık Karşılaşılan Sorunlar
 
-- 🧠 **YOLO model yolu hatası**: `best(1).pt` yolu makineye özel. `yolo_detection_node.py` ve `Algilama.py` içinde kendi model yolunu güncelle.
+- 🧠 **YOLO model yolu hatası**: `best(1).pt` yolu makineye özel. `yolo_detection_node.py` ve `yolo_target_lock.py` içinde kendi model yolunu güncelle.
 - 🎥 **Kamera açılmıyor**: `VideoCapture(0)` veya `VideoCapture(3)` sistemine uymayabilir. Doğru kamera index’ini dene.
 - 🛰️ **px4_msgs import hatası**: `px4_msgs` ortamda yoksa kurulmalı/derlenmeli.
 - 🧷 **Topic namespace farklı**: Bazı scriptler `/px4_1/...` kullanıyor, bazıları çıplak `fmu/...` kullanıyor. PX4-ROS köprüsündeki namespace’lere göre düzen gerekebilir.

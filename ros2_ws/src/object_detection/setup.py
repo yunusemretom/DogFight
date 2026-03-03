@@ -24,7 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'test_cam = object_detection.cam:main',
+            'test_cam = object_detection.camera_test_node:main',
         ],
     },
 )

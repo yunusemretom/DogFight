@@ -45,9 +45,10 @@ from px4_msgs.msg import TrajectorySetpoint
 from px4_msgs.msg import VehicleStatus
 from px4_msgs.msg import VehicleAttitudeSetpoint
 import math
+from px4_msgs.msg import VehicleLocalPosition
 
 class OffboardControl(Node):
-
+    
     def __init__(self):
         super().__init__('minimal_publisher')
 
@@ -56,16 +57,20 @@ class OffboardControl(Node):
             reliability=QoSReliabilityPolicy.BEST_EFFORT,
             durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
             history=QoSHistoryPolicy.KEEP_LAST,
-            depth=0
+            depth=1
         )
 
         qos_profile_sub = QoSProfile(
             reliability=QoSReliabilityPolicy.BEST_EFFORT,
             durability=QoSDurabilityPolicy.VOLATILE,
             history=QoSHistoryPolicy.KEEP_LAST,
-            depth=0
+            depth=1
         )
 
+        self.my_lat = 0.0
+        self.my_lon = 0.0
+        self.target_lat = 47.401628  
+        self.target_lon = 8.545730
         self.status_sub = self.create_subscription(
             VehicleStatus,
             '/px4_1/fmu/out/vehicle_status',
@@ -76,6 +81,12 @@ class OffboardControl(Node):
             '/px4_1/fmu/out/vehicle_status_v1',
             self.vehicle_status_callback,
             qos_profile_sub)
+        self.pos_sub_px4_2 = self.create_subscription(
+            VehicleLocalPosition,
+            '/px4_1/fmu/out/vehicle_local_position_v1',
+            self.vehicle_pos_callback,
+            qos_profile_sub)
+        
         self.attitude_pub = self.create_publisher(VehicleAttitudeSetpoint, '/px4_1/fmu/in/vehicle_attitude_setpoint_v1', qos_profile_pub)
         self.publisher_offboard_mode = self.create_publisher(OffboardControlMode, '/px4_1/fmu/in/offboard_control_mode', qos_profile_pub)
         self.publisher_trajectory = self.create_publisher(TrajectorySetpoint, '/px4_1/fmu/in/trajectory_setpoint', qos_profile_pub)
@@ -95,6 +106,24 @@ class OffboardControl(Node):
         self.altitude = self.get_parameter('altitude').value
         self.hiz=0.5
 
+    def vehicle_pos_callback(self, msg):
+        self.my_lat = msg.x
+        self.my_lon = msg.y
+    
+    def get_bearing_to_target(self):
+        lat1 = math.radians(self.my_lat)
+        lon1 = math.radians(self.my_lon)
+        lat2 = math.radians(self.target_lat)
+        lon2 = math.radians(self.target_lon)
+
+        d_lon = lon2 - lon1
+
+        y = math.sin(d_lon) * math.cos(lat2)
+        x = math.cos(lat1) * math.sin(lat2) - \
+            math.sin(lat1) * math.cos(lat2) * math.cos(d_lon)
+        
+        bearing = math.atan2(y, x)
+        return bearing # Radyan cinsinden döner    
     def vehicle_status_callback(self, msg):
         # TODO: handle NED->ENU transformation
         print("NAV_STATUS: ", msg.nav_state)
@@ -118,6 +147,7 @@ class OffboardControl(Node):
         y = cr * sp * cy + sr * cp * sy
         z = cr * cp * sy - sr * sp * cy
 
+
         return [w, x, y, z]
     
     def cmdloop_callback(self):
@@ -131,22 +161,22 @@ class OffboardControl(Node):
         offboard_msg.direct_actuator=False
         self.publisher_offboard_mode.publish(offboard_msg)
         if (self.nav_state == VehicleStatus.NAVIGATION_STATE_OFFBOARD and self.arming_state == VehicleStatus.ARMING_STATE_ARMED):
-            print("Publishing trajectory setpoint")
+            
             
         
             msg = VehicleAttitudeSetpoint()
-
-            # Örnek: pitch 10 derece yukarı
-            roll = 10.0
-            pitch = 10.0
-            yaw = 10.0
+            target_yaw = self.get_bearing_to_target()
+            # Örnek: pitch -5 derece (math.radians ile dereceyi radyana çevir)
+            roll = target_yaw
+            pitch = math.radians(5.0)
+            yaw = target_yaw
 
             q = self.euler_to_quaternion(roll, pitch, yaw)
-
+            print("Quaternion: ", q)
             msg.q_d = q
 
             # throttle (fixed wing için thrust_body[0])
-            msg.thrust_body = [1.0, 0.0, 0.0]
+            msg.thrust_body = [0.7, 0.0, 0.0]
 
             msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
 
