@@ -30,7 +30,7 @@ class YoloDetectionNode(Node):
         
         # YOLO modeli ve kamera
         self.model = YOLO("/home/tom/Downloads/best(1).pt")
-        self.cap = cv2.VideoCapture(0)
+        self.cap = cv2.VideoCapture(1)
         self.score_threshold = 0.5
         
         # Timer - 50Hz (0.02 saniye)

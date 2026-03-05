@@ -83,7 +83,8 @@ class OffboardControl(Node):
         self.dt = timer_period
         self.declare_parameter('radius', 10.0)
         self.declare_parameter('omega', 5.0)
-        self.declare_parameter('altitude', 5.0)
+        self.declare_parameter('altitude', 20.0)
+        self.declare_parameter('yaw_deg', 30.0)
         self.nav_state = VehicleStatus.NAVIGATION_STATE_MAX
         self.arming_state = VehicleStatus.ARMING_STATE_DISARMED
         # Note: no parameter callbacks are used to prevent sudden inflight changes of radii and omega
@@ -92,6 +93,7 @@ class OffboardControl(Node):
         self.radius = self.get_parameter('radius').value
         self.omega = self.get_parameter('omega').value
         self.altitude = self.get_parameter('altitude').value
+        self.yaw_deg = self.get_parameter('yaw_deg').value
 
     def vehicle_status_callback(self, msg):
         # TODO: handle NED->ENU transformation
@@ -105,14 +107,17 @@ class OffboardControl(Node):
         offboard_msg = OffboardControlMode()
         offboard_msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
         offboard_msg.position=False
-        offboard_msg.velocity=True
+        offboard_msg.velocity=False
         offboard_msg.acceleration=False
+        offboard_msg.attitude=False
         self.publisher_offboard_mode.publish(offboard_msg)
         if (self.nav_state == VehicleStatus.NAVIGATION_STATE_OFFBOARD and self.arming_state == VehicleStatus.ARMING_STATE_ARMED):
 
             trajectory_msg = TrajectorySetpoint()
-            trajectory_msg.position = [math.nan,math.nan,math.nan]
-            trajectory_msg.velocity = [20 * math.cos(30), 10.0, 0.0]
+            # NED frame: positive altitude means negative Z position.
+            trajectory_msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
+            trajectory_msg.position =[math.nan, math.nan, math.nan]
+            trajectory_msg.velocity =[math.nan, math.nan, math.nan]
             trajectory_msg.acceleration[0] = math.nan
             trajectory_msg.acceleration[1] = math.nan
             trajectory_msg.acceleration[2] = math.nan
