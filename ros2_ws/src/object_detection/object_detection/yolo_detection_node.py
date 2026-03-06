@@ -4,6 +4,8 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy, QoSDurabilityPolicy
 from geometry_msgs.msg import Point
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
 import cv2
 from ultralytics import YOLO
 import time
@@ -27,10 +29,25 @@ class YoloDetectionNode(Node):
             '/yolo/target_distance', 
             qos_profile_pub
         )
+
+        # Camera subscriber
+        qos_profile_sub = QoSProfile(
+            reliability=QoSReliabilityPolicy.BEST_EFFORT,
+            durability=QoSDurabilityPolicy.VOLATILE,
+            history=QoSHistoryPolicy.KEEP_LAST,
+            depth=5
+        )
+        self.bridge = CvBridge()
+        self.latest_frame = None
+        self.subscription = self.create_subscription(
+            Image,
+            '/world/default/model/rc_cessna_1/link/camera_link/sensor/camera/image',
+            self.image_callback,
+            qos_profile_sub
+        )
         
-        # YOLO modeli ve kamera
+        # YOLO modeli
         self.model = YOLO("/home/tom/Downloads/best(1).pt")
-        self.cap = cv2.VideoCapture(1)
         self.score_threshold = 0.5
         
         # Timer - 50Hz (0.02 saniye)
@@ -38,13 +55,17 @@ class YoloDetectionNode(Node):
         self.timer = self.create_timer(timer_period, self.detection_callback)
         
         self.get_logger().info('YOLO Detection Node başlatıldı')
+
+    def image_callback(self, msg):
+        # Cache the latest frame for processing in the timer
+        self.latest_frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
     
     def detection_callback(self):
-        ret, frame = self.cap.read()
-        frame = cv2.flip(frame, 1)
-        if not ret:
+        if self.latest_frame is None:
             self.get_logger().warn('Kamera görüntüsü alınamadı')
             return
+
+        frame = cv2.flip(self.latest_frame, 1)
         
         # Görüntünün merkez noktasını hesapla
         frame_height, frame_width = frame.shape[:2]
@@ -106,7 +127,6 @@ class YoloDetectionNode(Node):
         cv2.waitKey(1)
     
     def destroy_node(self):
-        self.cap.release()
         cv2.destroyAllWindows()
         super().destroy_node()
 

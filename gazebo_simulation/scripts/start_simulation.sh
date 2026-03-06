@@ -203,7 +203,7 @@ print_status() {
 }
 
 # ==================== ANA PROGRAM ====================
-clear
+clearMi
 echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
 echo -e "${GREEN}     TEKNOFEST Multi-Aircraft Simulation Launcher${NC}"
 echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
