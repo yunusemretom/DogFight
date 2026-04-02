@@ -51,3 +51,5 @@ gps_log_*.csv
 *.pth
 *.tmp
 *.engine
+
+cikti.mp4

@@ -7,6 +7,8 @@ Gereksinimler:
     TensorRT >= 8.6 (NVIDIA driver uyumlu sürüm)
 
 Alternatif (komut satırı ile):
+    Aşağıdaki 'trtexec' komutu, bu Python kodunun yaptığı işlemin aynısını 
+    doğrudan C++ tabanlı bir komut satırı aracıyla yapar. Hızlı testler için idealdir.
     trtexec --onnx=exports/inference_model.onnx \
             --saveEngine=exports/rfdetr.engine \
             --fp16 \
@@ -18,6 +20,8 @@ import tensorrt as trt
 import os
 import sys
 
+# TensorRT derleme süreci oldukça karmaşıktır ve arka planda binlerce satır log üretebilir.
+# Sadece önemli uyarıları ve hataları görmek için log seviyesini WARNING olarak ayarlıyoruz.
 TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
 
 
@@ -29,30 +33,48 @@ def build_engine(
     input_shape: tuple = (1, 3, 560, 560),  # RF-DETR varsayılan giriş boyutu
 ) -> None:
     """
-    ONNX → TensorRT Engine derler ve diske kaydeder.
+    Framework bağımsız ONNX modelini okur, donanıma özel TensorRT Engine'e derler ve diske kaydeder.
 
     Args:
-        onnx_path    : ONNX model yolu
-        engine_path  : Kaydedilecek .engine yolu
-        fp16         : FP16 hassasiyeti etkinleştir (2-4x hız kazanımı)
-        workspace_gb : TensorRT için maksimum GPU belleği (GB)
-        input_shape  : (batch, channel, height, width)
+        onnx_path    : Ara format olan ONNX modelinin dosya yolu.
+        engine_path  : Çıktı olarak alınacak, donanıma kilitlenmiş (GPU'ya özel) .engine yolu.
+        fp16         : FP16 (Yarım Hassasiyetli Kayan Nokta - 16-bit) kullanımı. 
+                       Doğruluktan çok az ödün vererek (insan gözünün fark edemeyeceği seviyede), 
+                       Tensor Core'ları aktif eder ve modeli 2 ila 4 kat arası hızlandırır.
+        workspace_gb : TensorRT'nin derleme aşamasında en iyi algoritmaları test ederken 
+                       kullanabileceği maksimum "çalışma alanı" (scratch pad) belleği.
+        input_shape  : Modelin giriş boyutları (Yığın sayısı, Kanal, Yükseklik, Genişlik).
     """
     print(f"TensorRT sürümü : {trt.__version__}")
     print(f"ONNX dosyası    : {onnx_path}")
     print(f"Engine çıktısı  : {engine_path}")
     print(f"FP16            : {fp16}")
 
+    # 'Builder', ağın (network) optimizasyon stratejilerini belirleyen ve 
+    # derleme işlemini orkestre eden ana fabrikadır.
     builder = trt.Builder(TRT_LOGGER)
+    
+    # EXPLICIT_BATCH bayrağı (flag): Modern ONNX modelleri dinamik veya belirli bir 
+    # batch (yığın) boyutuyla gelir. Eski TensorRT sürümleri batch boyutunu dolaylı yoldan tahmin ederdi.
+    # Bu bayrak, modelin girdilerindeki batch boyutunun açıkça (explicitly) tanımlandığını belirtir.
     network_flags = 1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
+    
+    # Boş bir yapay sinir ağı (network) kapsayıcısı oluşturulur.
     network = builder.create_network(network_flags)
+    
+    # ONNX dosyalarını okuyup TensorRT 'network' objesine çevirecek olan çevirmen (parser) nesnesi.
     parser = trt.OnnxParser(network, TRT_LOGGER)
 
-    # ─── ONNX Modelini Ayrıştır ───────────────────────────────────────────
+    # ==========================================
+    # 1. ONNX Modelini Ayrıştırma (Parsing)
+    # ==========================================
     if not os.path.exists(onnx_path):
         raise FileNotFoundError(f"ONNX dosyası bulunamadı: {onnx_path}")
 
+    # ONNX dosyası bayt (binary) olarak okunur ve parser'a verilir.
     with open(onnx_path, "rb") as f:
+        # Eğer parser ONNX grafiğindeki (graph) düğümleri TensorRT katmanlarına 
+        # dönüştüremezse (desteklenmeyen bir operatör varsa) hata fırlatır.
         if not parser.parse(f.read()):
             for i in range(parser.num_errors):
                 print(f"ONNX ayrıştırma hatası: {parser.get_error(i)}")
@@ -61,42 +83,69 @@ def build_engine(
     print(f"Ağ giriş sayısı : {network.num_inputs}")
     print(f"Ağ çıkış sayısı : {network.num_outputs}")
 
-    # ─── Builder Konfigürasyonu ───────────────────────────────────────────
+    # ==========================================
+    # 2. Builder Konfigürasyonu (Derleme Ayarları)
+    # ==========================================
     config = builder.create_builder_config()
+    
+    # TensorRT, GPU üzerindeki farklı algoritmaları denerken VRAM'e ihtiyaç duyar.
+    # Burada GB cinsinden verilen değeri bayta çeviriyoruz. 
+    # (1 << 30) işlemi bit kaydırmadır ve matematiksel olarak 2^30 (1.073.741.824 bayt = 1 GiB) anlamına gelir.
     config.set_memory_pool_limit(
         trt.MemoryPoolType.WORKSPACE,
-        workspace_gb * (1 << 30)   # GB → Byte
+        workspace_gb * (1 << 30)   # GB → Byte çevirimi
     )
 
+    # GPU'nun fiziksel olarak FP16 (Tensor Cores) donanımına sahip olup olmadığı kontrol edilir.
     if fp16 and builder.platform_has_fast_fp16:
+        # GPU destekliyorsa FP16 bayrağı aktif edilir. Bu, TensorRT'ye şu mesajı verir:
+        # "Mümkün olan her katmanda 32-bit yerine 16-bit matematik kullan."
         config.set_flag(trt.BuilderFlag.FP16)
         print("FP16 modu etkin")
     else:
         print("FP32 modu kullanılıyor")
 
-    # CUDA Graph desteği (tekrarlayan inference için ~%10-15 ek hız)
+    # CUDA Graph, GPU'ya gönderilen komutların bir bütün olarak paketlenip gönderilmesini sağlar.
+    # Bu ayar (PREFER_PRECISION_CONSTRAINTS), derleyicinin CUDA Graph uyumluluğunu bozabilecek 
+    # veri tipi değişikliklerini (hassasiyet kurallarını) daha dikkatli yapmasını söyler.
     config.set_flag(trt.BuilderFlag.PREFER_PRECISION_CONSTRAINTS)
 
-    # ─── Engine Derle ─────────────────────────────────────────────────────
+    # ==========================================
+    # 3. Engine Derleme (Kernel Auto-Tuning)
+    # ==========================================
     print("\nEngine derleniyor... (ilk kez birkaç dakika sürebilir)")
+    # En kritik aşama: TensorRT "Kernel Profiling" (Donanım Profili Çıkarma) yapar.
+    # Ağdaki her bir işlem (örneğin evrişim/convolution) için, GPU'nun desteklediği 
+    # yüzlerce farklı C++ (CUDA) varyasyonunu sahte verilerle test eder ve milisaniye 
+    # bazında en hızlı olanı seçer. Bu yüzden işlem uzun sürer ve derlenen dosya SADECE derlendiği GPU modelinde çalışır.
     serialized_engine = builder.build_serialized_network(network, config)
 
     if serialized_engine is None:
-        raise RuntimeError("TensorRT engine derlenemedi!")
+        raise RuntimeError("TensorRT engine derlenemedi! OOM (Bellek yetersizliği) veya desteklenmeyen katman olabilir.")
 
-    # ─── Engine'i Kaydet ──────────────────────────────────────────────────
+    # ==========================================
+    # 4. Engine'i Kaydetme (Serialization)
+    # ==========================================
+    # Optimizasyonları bitmiş ve derlenmiş model, daha sonra saniyeler içinde 
+    # belleğe geri yüklenebilmesi (deserialize) için bayt dizisi olarak diske yazılır.
     os.makedirs(os.path.dirname(engine_path) or ".", exist_ok=True)
     with open(engine_path, "wb") as f:
         f.write(serialized_engine)
 
+    # Dosya boyutu hesaplanır ve ekrana yazdırılır. FP16 kullanıldığında dosya boyutu 
+    # FP32 modelin neredeyse tam yarısı kadar olacaktır.
     size_mb = os.path.getsize(engine_path) / (1024 ** 2)
     print(f"\n✅ Engine kaydedildi: {engine_path}  ({size_mb:.1f} MB)")
 
 
+# ==========================================
+# Ana Program (Entry Point)
+# ==========================================
 if __name__ == "__main__":
+    # Fonksiyon, belirtilen parametrelerle çağrılır. 
     build_engine(
         onnx_path="/home/tom/Documents/Dog_Fight/object_detection/inference_model.onnx",
         engine_path="exports/rfdetr.engine",
-        fp16=True,
-        workspace_gb=4,
+        fp16=True,       # Hız optimizasyonu aktif
+        workspace_gb=4,  # Derleme için 4 GB VRAM tahsisi
     )

@@ -19,7 +19,7 @@ frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 source_fps = cap.get(cv2.CAP_PROP_FPS)
 output_fps = source_fps if source_fps and source_fps > 0 else 30.0
-output_path = "/home/tom/Documents/Dog_Fight/object_detection/cikti2_tespit.mp4"
+output_path = "/home/tom/Documents/DogFight/cikti.mp4"
 
 # MP4 icin yaygin codec: mp4v
 video_writer = cv2.VideoWriter(
@@ -61,10 +61,10 @@ while True:
     # detections.class_id ve detections.confidence listelerini 'zip' ile eşleştiriyoruz.
     # Bu sayede her tespite tam olarak 1 etiket karşılık gelir (N=N eşleşmesi).
     labels = [
-        f"{COCO_CLASSES[class_id]} {confidence:.2f}" 
+        f"plane {confidence:.2f}" 
         for class_id, confidence in zip(detections.class_id, detections.confidence)
     ]
-
+    print(f"Algilanan nesneler: {labels}")
     # 6. Görüntü Üzerine Çizim Yapılması
     # .copy() kullanımı orijinal görselin bozulmasını engeller.
     annotated_image = box_annotator.annotate(
