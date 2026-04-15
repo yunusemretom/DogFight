@@ -25,7 +25,12 @@ from modeli_dene import RFDETRTensorRT
 # Modelin tahmin ettiği ID numaralarını (0, 1, 2...) anlamlı etiketlere ("insan", "araba")
 # dönüştürmek için kullanılan sınıf listesi.
 try:
-    from rfdetr.assets.coco_classes import COCO_CLASSES
+    COCO_CLASSES = {
+        1: "drone",
+        2: "f16",
+        3: "helicopter",
+        4: "rocket",
+        5: "missile"}
     CLASS_NAMES = list(COCO_CLASSES.values())
 except ImportError:
     CLASS_NAMES = None
@@ -91,7 +96,7 @@ def run(engine_path: str, source: int | str, threshold: float):
         )
 
         # 5. Ekran Çıktısı ve Döngü Kontrolü
-        cv2.imshow("RF-DETR TensorRT", annotated)
+        cv2.imshow("Algilama V3", annotated)
         
         # Klavye dinleyicisi. Her kare çizildikten sonra 1 milisaniye bekler.
         # Bu bekleme süresi, işletim sisteminin pencereyi güncellemesi (render) için zorunludur.

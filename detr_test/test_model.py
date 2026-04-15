@@ -1,16 +1,16 @@
 import cv2
 import time
 import supervision as sv
-from rfdetr import RFDETRLarge,RFDETRNano,RFDETRBase
+from rfdetr import RFDETRLarge,RFDETRNano,RFDETRBase,RFDETRSmall
 from rfdetr.assets.coco_classes import COCO_CLASSES
 #
 # 1. Modelin Başlatılması
 # RF-DETR mimarisi, transformer tabanlı bir nesne tespit modelidir.
-model = RFDETRNano(pretrain_weights="/home/tom/Downloads/checkpoint_best_regular_kaggle.pth")
+model = RFDETRSmall(pretrain_weights="/home/tom/Downloads/checkpoint_best_regular_colab_4.pth")
 
 
 # Görselleştirme (OpenCV/Supervision) için numpy dizisi gereklidir (BGR)
-cap = cv2.VideoCapture("/home/tom/Documents/İTU_Gökbörü/yolov8_deneme/denemevideo2.mp4")
+cap = cv2.VideoCapture("/home/tom/Downloads/snapsave-app_3868097202723797224.mp4")
 
 if not cap.isOpened():
     raise RuntimeError("Video acilamadi. Dosya yolunu kontrol edin.")
@@ -61,7 +61,7 @@ while True:
     # detections.class_id ve detections.confidence listelerini 'zip' ile eşleştiriyoruz.
     # Bu sayede her tespite tam olarak 1 etiket karşılık gelir (N=N eşleşmesi).
     labels = [
-        f"plane {confidence:.2f}" 
+        f"{COCO_CLASSES[class_id]} {confidence:.2f}" 
         for class_id, confidence in zip(detections.class_id, detections.confidence)
     ]
     print(f"Algilanan nesneler: {labels}")
