@@ -1,0 +1,12 @@
+# Tracking parameters
+tracking:
+  # GPS tracker
+  vehicle1_topic: "/px4_1/fmu/out/vehicle_gps_position"
+  vehicle2_topic: "/px4_3/fmu/out/vehicle_gps_position"
+  max_history: 100
+  display_interval: 1.0              # seconds
+
+  # Visual tracker (TCTrack)
+  redetect_every: 12                 # Re-run detector every N frames
+  track_score_threshold: 0.18
+  detection_threshold: 0.45

@@ -1,189 +1,294 @@
-<!--
-README dili: Türkçe 🇹🇷
-Bu repo: ROS 2 + PX4 + YOLO tabanlı takip/"dogfight" denemeleri
--->
+# 🐶✈️ DogFight — PX4 + ROS 2 ile RC Uçak Hedef Takip Sistemi
 
-# 🐶✈️ DogFight
+> **TEKNOFEST** yarışmasına yönelik, **ROS 2 Humble** ve **PX4 Autopilot** tabanlı, yapay zeka destekli hedef takip ve dogfight (hava muharebesi) platformu.
 
-Bu depo, **ROS 2** üzerinde **PX4 (SITL/gerçek)** telemetri-konum takibi ve **YOLO tabanlı görüntüyle hedef takibi** denemelerini içerir.
-
-> Not: Kodlar araştırma/deneme amaçlıdır. Bazı dosyalarda yol/cihaz numarası gibi makineye özel ayarlar bulunur (örn. model dosya yolu, kamera index’i).
+RC uçağımızı otonom olarak kontrol edip, GPS ve görüntü işleme verilerine dayanarak rakip aracı takip etmeyi hedefleyen bu proje; nesne tespiti (YOLO, RF-DETR), görsel takip (TCTrack), GPS tabanlı konumlandırma ve offboard uçuş kontrolünü tek bir çatı altında birleştirir.
 
 ---
 
-## 🧭 Klasör Yapısı
+## 📐 Sistem Mimarisi
 
-- `ros2_ws/` → Ana ROS 2 çalışma alanı (colcon ile build edilen kısım)
-- `ros2_ws/src/object_detection/` → `object_detection` ROS 2 Python paketi
-- `gps_log_*.csv` → GPS takip node’unun ürettiği log çıktıları
-- `build/`, `install/`, `log/` → (muhtemelen) daha önce alınmış build çıktıları
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        DogFight Sistemi                         │
+├─────────────────┬──────────────────┬────────────────────────────┤
+│   📸 Tespit     │   🎯 Takip       │   🕹️ Kontrol              │
+│ (Detection)     │ (Tracking)       │ (Control)                  │
+├─────────────────┼──────────────────┼────────────────────────────┤
+│ YOLO Node       │ GPS Tracker Node │ Attitude Controller Node   │
+│ RF-DETR Node    │ Visual Tracker   │ Velocity Controller Node   │
+│                 │ Node             │ Position Controller Node   │
+│                 │                  │ Visual Offboard Node       │
+└────────┬────────┴────────┬─────────┴──────────────┬─────────────┘
+         │                 │                        │
+         ▼                 ▼                        ▼
+    /detection/       /px4_X/fmu/out/         /px4_1/fmu/in/
+    target_distance   vehicle_gps_position    offboard_control_mode
+                                              trajectory_setpoint
+                                              vehicle_attitude_setpoint
+```
+
+### ROS 2 Topic'leri
+
+| Topic | Mesaj Tipi | Açıklama |
+|-------|-----------|----------|
+| `/yolo/target_distance` | `geometry_msgs/Point` | YOLO hedef merkez sapması (dx, dy, confidence) |
+| `/px4_1/fmu/out/vehicle_gps_position` | `px4_msgs/SensorGps` | Araç 1 GPS konumu |
+| `/px4_3/fmu/out/vehicle_gps_position` | `px4_msgs/SensorGps` | Araç 2 GPS konumu |
+| `/px4_1/fmu/in/offboard_control_mode` | `px4_msgs/OffboardControlMode` | Offboard kontrol modu |
+| `/px4_1/fmu/in/trajectory_setpoint` | `px4_msgs/TrajectorySetpoint` | Yörünge hedef noktası |
+| `/px4_1/fmu/in/vehicle_attitude_setpoint_v1` | `px4_msgs/VehicleAttitudeSetpoint` | Attitude hedef noktası |
 
 ---
 
-## 🧩 İçerik / Node ve Script’ler
+## 📁 Klasör Yapısı
 
-ROS 2 paketi: `object_detection`
-
-### 🎥 Basit Kamera Test Node’u
-- Giriş noktası (entry point): `test_cam`
-- Çalıştırma:
-	```bash
-	ros2 run object_detection test_cam
-	```
-
-### 🧠 YOLO Tespit (ROS 2 Node)
-- Dosya: `ros2_ws/src/object_detection/object_detection/yolo_detection_node.py`
-- Kamera: `cv2.VideoCapture(0)`
-- Model: `ultralytics.YOLO("/home/tom/Downloads/best(1).pt")` (makineye özel)
-- Yayın (publish) topic’i:
-	- `/yolo/target_distance` (`geometry_msgs/Point`)
-		- `x`: hedef bbox merkezinin frame merkezine göre $
-			dx
-			$
-		- `y`: hedef bbox merkezinin frame merkezine göre $
-			dy
-			$
-		- `z`: confidence
-
-Çalıştırma (script olarak):
-```bash
-python3 ros2_ws/src/object_detection/object_detection/yolo_detection_node.py
 ```
-
-### 🛰️ İki Araç GPS Takibi (ROS 2 Node)
-- Dosya: `ros2_ws/src/object_detection/object_detection/gps_tracker.py`
-- Dinlenen topic’ler:
-	- `/px4_1/fmu/out/vehicle_gps_position`
-	- `/px4_3/fmu/out/vehicle_gps_position`
-- Çıktı:
-	- Anlık durum ekranı (terminal)
-	- `gps_log_YYYYMMDD_HHMMSS.csv` dosyasına kayıt 📝
-
-Çalıştırma:
-```bash
-python3 ros2_ws/src/object_detection/object_detection/gps_tracker.py
+DogFight/
+│
+├── ros2_ws/                           # 🤖 ROS 2 Çalışma Alanı
+│   └── src/
+│       ├── px4_msgs/                  #   PX4 mesaj tanımları (submodule)
+│       ├── px4_ros_com/               #   PX4-ROS2 köprü paketi (submodule)
+│       │
+│       ├── dogfight_detection/        # 📸 Nesne Tespit Paketi
+│       │   └── dogfight_detection/
+│       │       ├── yolo_detection_node.py      # YOLO ile hedef tespiti
+│       │       └── rfdetr_detection_node.py    # RF-DETR ile hedef tespiti
+│       │
+│       ├── dogfight_tracking/         # 🎯 Hedef Takip Paketi
+│       │   └── dogfight_tracking/
+│       │       ├── gps_tracker_node.py         # İki araç GPS takibi
+│       │       └── visual_tracker_node.py      # Görsel ofboard takip
+│       │
+│       ├── dogfight_control/          # 🕹️ Uçuş Kontrol Paketi
+│       │   └── dogfight_control/
+│       │       ├── attitude_controller_node.py # Attitude setpoint (PID)
+│       │       ├── velocity_controller_node.py # Velocity setpoint
+│       │       ├── position_controller_node.py # GPS pozisyon takip
+│       │       └── visual_offboard_node.py     # YOLO tabanlı velocity
+│       │
+│       └── dogfight_bringup/          # 🚀 Launch & Konfigürasyon
+│           ├── launch/
+│           │   ├── detection_launch.py
+│           │   ├── tracking_launch.py
+│           │   └── full_system_launch.py
+│           └── config/
+│               ├── detection_params.yaml
+│               ├── control_params.yaml
+│               └── tracking_params.yaml
+│
+├── simulation/                        # 🌍 Gazebo Simülasyon Ortamı
+│   ├── gazebo/
+│   │   ├── models/                    #   Uçak & ortam modelleri (SDF)
+│   │   └── worlds/                    #   Dünya dosyaları
+│   └── scripts/
+│       ├── install_dependencies.sh    #   Ortam kurulum scripti
+│       └── launch_multi_aircraft.sh   #   Çoklu uçak başlatıcı
+│
+├── experiments/                       # 🧪 Deneyler & Benchmark'lar
+│   ├── model_benchmark/               #   YOLO vs RF-DETR karşılaştırma
+│   ├── rfdetr_tctrack/                #   RF-DETR + TCTrack entegrasyonu
+│   ├── yolo_inference/                #   YOLO test scriptleri
+│   ├── rfdetr_inference/              #   RF-DETR test scriptleri
+│   └── training/                      #   Model eğitim notebook'ları
+│
+├── tools/                             # 🔧 Yardımcı Araçlar
+│   ├── gps_bearing_calculator.py      #   GPS mesafe/yön hesaplayıcı
+│   └── convert_video_format.py        #   Video format dönüştürücü
+│
+├── TCTrack/                           # 📦 TCTrack Takip Framework'ü (submodule)
+│
+├── docs/                              # 📚 Dokümantasyon
+│   ├── architecture.md
+│   └── setup_guide.md
+│
+├── .gitignore
+├── .gitmodules
+└── README.md                          # 📖 Bu dosya
 ```
-
-### 🎯 YOLO ile Uçak/Drone Offboard Takip Denemeleri
-Bu repo içinde birden fazla offboard kontrol denemesi var. Bazıları YOLO’dan gelen `/yolo/target_distance` verisini subscribe ederek setpoint üretiyor.
-
-- `ros2_ws/src/object_detection/object_detection/visual_tracking_offboard.py` → YOLO ile velocity tabanlı takip denemesi
-- `ros2_ws/src/object_detection/object_detection/gps_position_control.py` → Konum bazlı setpoint denemesi
-- `ros2_ws/src/object_detection/object_detection/attitude_setpoint_control.py` → Attitude setpoint denemesi
-
-> ⚠️ Uyarı: Offboard kontrol, PX4 tarafında doğru mod/arming/parametre ayarı ve doğru topic namespace’leri gerektirir.
-
-### 🎬 Video Dönüştürme Aracı
-- Dosya: `ros2_ws/src/object_detection/object_detection/webm_to_mp4.py`
-- Amaç: `.webm` videolarını `.mp4`’e çevirmek (FFmpeg gerekir)
-- Örnek:
-	```bash
-	python3 ros2_ws/src/object_detection/object_detection/webm_to_mp4.py video.webm
-	python3 ros2_ws/src/object_detection/object_detection/webm_to_mp4.py --dir ./videos --recursive
-	```
-
-### 🧰 Diğer Yardımcı Script’ler
-- `ros2_ws/src/object_detection/object_detection/yolo_target_lock.py` → YOLO ile "lock / hedef kilidi" görselleştirmesi (ROS'suz, direkt OpenCV döngüsü)
-- `ros2_ws/src/object_detection/object_detection/camera_capture_test.py` → Kamera cihazı/format/FPS denemesi (OpenCV)
-- `ros2_ws/src/object_detection/object_detection/px4_arm_takeoff_test.py` → PX4'e `VehicleCommand` ile ARM/MODE/TAKEOFF komut denemesi
-- `ros2_ws/src/object_detection/object_detection/velocity_setpoint_control.py` → Basit velocity setpoint denemesi
-- `ros2_ws/src/object_detection/object_detection/yolo_visual_drone_control.py` → YOLO tabanlı drone velocity kontrolü
 
 ---
 
 ## ✅ Gereksinimler
 
-### 🐧 Sistem
-- Linux (Ubuntu önerilir)
-- ROS 2 (repo notlarında **Humble** kullanılmış)
-- `colcon`
+### Sistem
+- **OS**: Ubuntu 22.04 LTS
+- **ROS 2**: Humble Hawksbill
+- **Gazebo**: Harmonic (gz-sim)
+- **PX4**: v1.15+ (SITL veya gerçek donanım)
 
-### 🐍 Python Paketleri
-YOLO tarafı için tipik olarak:
-- `ultralytics`
-- `opencv-python` (veya sistem OpenCV)
-
-Kurulum örneği:
+### Python Paketleri
 ```bash
-pip3 install ultralytics opencv-python
+pip3 install ultralytics opencv-python supervision rfdetr torch
 ```
 
-### 🛰️ PX4 Mesajları
-GPS ve offboard scriptleri `px4_msgs` kullanır.
-
-- ROS ortamında `px4_msgs`/`px4_ros_com` kurulumu veya çalışma alanına eklenmesi gerekebilir.
+### PX4 Köprüsü
+```bash
+# Micro XRCE-DDS Agent kurulumu
+cd ~/Micro-XRCE-DDS-Agent/build
+sudo make install
+sudo ldconfig /usr/local/lib/
+```
 
 ---
 
-## 🛠️ Kurulum / Build
+## 🛠️ Kurulum
 
-1) ROS ortamını kaynakla:
+### 1. Depoyu Klonla
 ```bash
-source /opt/ros/humble/setup.sh
+git clone --recursive https://github.com/YOUR_USER/DogFight.git
+cd DogFight
 ```
 
-2) Workspace build:
+### 2. Bağımlılıkları Kur
 ```bash
+# Otomatik kurulum (PX4 + ROS 2 + Agent)
+bash simulation/scripts/install_dependencies.sh
+```
+
+### 3. ROS 2 Workspace Build
+```bash
+source /opt/ros/humble/setup.bash
 cd ros2_ws
 colcon build --symlink-install
-```
-
-3) Workspace’i kaynakla:
-```bash
-source install/local_setup.sh
+source install/local_setup.bash
 ```
 
 ---
 
-## 🚀 Çalıştırma Akışı (Örnek)
+## 🚀 Çalıştırma
 
-### 1) Micro XRCE Agent (PX4 ↔ ROS köprüsü)
-Repo notlarında şu komut kullanılmış:
+### Adım 1: Micro XRCE-DDS Agent
 ```bash
 MicroXRCEAgent udp4 -p 8888
 ```
 
-### 2) PX4 SITL örnek komutları
-`ros2_ws/src/object_detection/test/notlarım.txt` içinde geçen örnekler:
+### Adım 2: PX4 SITL Simülasyonu
 ```bash
-PX4_SYS_AUTOSTART=4003 PX4_SIM_MODEL=gz_rc_cessna ./build/px4_sitl_default/bin/px4 -i 1
-PX4_GZ_STANDALONE=1 PX4_SYS_AUTOSTART=4003 PX4_GZ_MODEL_POSE="1,2" PX4_SIM_MODEL=gz_rc_cessna ./build/px4_sitl_default/bin/px4 -i 3
+# Tek uçak
+PX4_SYS_AUTOSTART=4003 PX4_SIM_MODEL=gz_rc_cessna \
+  ./build/px4_sitl_default/bin/px4 -i 1
+
+# Çoklu uçak (TEKNOFEST senaryosu)
+bash simulation/scripts/launch_multi_aircraft.sh
 ```
 
-### 3) ROS Node’ları
-Örn. YOLO tespiti:
+### Adım 3: ROS 2 Node'ları
+
+#### Tek Tek Çalıştırma
 ```bash
-python3 ros2_ws/src/object_detection/object_detection/yolo_detection_node.py
+# YOLO Tespit
+ros2 run dogfight_detection yolo_detection_node
+
+# GPS Takip
+ros2 run dogfight_tracking gps_tracker_node
+
+# Attitude Kontrolcü
+ros2 run dogfight_control attitude_controller_node
 ```
 
-Örn. GPS takip:
+#### Launch Dosyası ile Toplu Çalıştırma
 ```bash
-python3 ros2_ws/src/object_detection/object_detection/gps_tracker.py
+# Tüm sistemi başlat
+ros2 launch dogfight_bringup full_system_launch.py
+
+# Sadece tespit pipeline'ı
+ros2 launch dogfight_bringup detection_launch.py
+
+# Sadece takip + kontrol
+ros2 launch dogfight_bringup tracking_launch.py
 ```
 
 ---
 
-## 🧪 Test / Kalite
+## 📸 ROS 2 Paketleri (Detay)
 
-Paket altında temel test şablonları mevcut:
+### `dogfight_detection` — Nesne Tespiti
+
+| Node | Açıklama |
+|------|----------|
+| `yolo_detection_node` | YOLO modeli ile kamera görüntüsünden hedef tespiti. Tespit edilen hedefin merkez sapmasını `/yolo/target_distance` topic'ine yayınlar. |
+| `rfdetr_detection_node` | RF-DETR transformer modeli ile hedef tespiti. Supervision kütüphanesi ile görselleştirme. |
+
+### `dogfight_tracking` — Hedef Takibi
+
+| Node | Açıklama |
+|------|----------|
+| `gps_tracker_node` | İki araç (PX4_1 ve PX4_3) için GPS konumlarını dinler, aralarındaki mesafeyi Haversine formülü ile hesaplar, CSV'ye loglar. |
+| `visual_tracker_node` | YOLO/RF-DETR tespitlerini subscribe ederek fixed-wing lateral/longitudinal setpoint ile görsel takip yapar. |
+
+### `dogfight_control` — Uçuş Kontrolü
+
+| Node | Açıklama |
+|------|----------|
+| `attitude_controller_node` | GPS tabanlı hedef takibi: Yaw PID (roll), Altitude PID (pitch), Distance PID (thrust). Attitude setpoint ile kontrol. |
+| `velocity_controller_node` | Velocity setpoint ile offboard kontrol denemesi. |
+| `position_controller_node` | İki uçağın lokal pozisyonlarını karşılaştırarak pozisyon tabanlı takip. |
+| `visual_offboard_node` | YOLO'dan gelen sapma verisini velocity komutu haline çevirerek görsel takip. |
+
+### `dogfight_bringup` — Launch & Konfigürasyon
+
+Tüm sistemi veya alt bileşenleri tek komutla başlatmak için launch dosyaları ve merkezi YAML konfigürasyon dosyaları içerir.
+
+---
+
+## 🧪 Deneyler
+
+`experiments/` klasörü, farklı model ve yöntemlerin performans testleri için scriptler içerir:
+
+| Klasör | İçerik |
+|--------|--------|
+| `model_benchmark/` | YOLO vs RF-DETR (Normal + TensorRT) karşılaştırmalı video çıktısı |
+| `rfdetr_tctrack/` | RF-DETR tespit + TCTrack temporal takip entegrasyonu |
+| `yolo_inference/` | YOLO inferans, video test, TensorRT dönüştürme |
+| `rfdetr_inference/` | RF-DETR inferans, ekran yakalama, SAHI dilimleme, ONNX/TensorRT dönüştürme |
+| `training/` | RF-DETR model eğitim notebook'u |
+
+---
+
+## 🌍 Simülasyon
+
+Gazebo Harmonic simülasyonu, 3 adet RC Cessna uçak ile TEKNOFEST senaryosunu çalıştırır:
+
+- **HERO**: Ana uçak (kameralı), kontrol ettiğimiz araç
+- **ENEMY1**: Rakip uçak 1
+- **ENEMY2**: Rakip uçak 2
+
+GPS Home: Şanlıurfa GAP Havalimanı (LTCS) — Pist 04/22
+
 ```bash
-cd ros2_ws
-colcon test
-colcon test-result --verbose
+# Simülasyonu başlat
+bash simulation/scripts/launch_multi_aircraft.sh
 ```
 
 ---
 
-## 🧯 Sık Karşılaşılan Sorunlar
+## 🧰 Araçlar
 
-- 🧠 **YOLO model yolu hatası**: `best(1).pt` yolu makineye özel. `yolo_detection_node.py` ve `yolo_target_lock.py` içinde kendi model yolunu güncelle.
-- 🎥 **Kamera açılmıyor**: `VideoCapture(0)` veya `VideoCapture(3)` sistemine uymayabilir. Doğru kamera index’ini dene.
-- 🛰️ **px4_msgs import hatası**: `px4_msgs` ortamda yoksa kurulmalı/derlenmeli.
-- 🧷 **Topic namespace farklı**: Bazı scriptler `/px4_1/...` kullanıyor, bazıları çıplak `fmu/...` kullanıyor. PX4-ROS köprüsündeki namespace’lere göre düzen gerekebilir.
+| Araç | Açıklama |
+|------|----------|
+| `tools/gps_bearing_calculator.py` | İki GPS koordinatı arasında mesafe (km) ve yön (bearing) hesaplar |
+| `tools/convert_video_format.py` | `.webm` dosyalarını `.mp4`'e dönüştürür (FFmpeg gerekir) |
 
 ---
 
-## 📜 Lisans / Üçüncü Parti Notu
+## ⚠️ Bilinen Sorunlar ve Notlar
 
-Bu repo içinde bazı dosyalar PX4 örneklerinden türetilmiş olabilir ve ilgili dosyaların başında PX4 lisans metni yer alır. Lütfen bu dosyaların lisans başlıklarını koruyun.
+- **Model yolları**: Bazı scriptlerde mutlak yollar (`/home/tom/Downloads/...`) bulunur. Kendi sisteminize göre güncelleyin veya `config/` YAML'larını kullanın.
+- **Kamera index**: `VideoCapture(0)` veya `VideoCapture(3)` sisteminize uymayabilir.
+- **px4_msgs**: ROS 2 workspace'de build edilmiş olmalı.
+- **Topic namespace**: Bazı node'lar `/px4_1/...` kullanırken, bazıları namespace'siz `fmu/...` kullanıyor. PX4-ROS2 köprü konfigürasyonunuza göre düzenleyin.
+- **Offboard kontrol**: PX4 tarafında doğru mod/arming/parametre ayarı gerekir.
 
+---
+
+## 📜 Lisans
+
+Bu depo içinde bazı dosyalar [PX4 örneklerinden](https://github.com/PX4/px4_ros_com) türetilmiştir ve ilgili dosyaların başında PX4 BSD-3-Clause lisans metni yer alır. Lütfen bu lisans başlıklarını koruyun.
+
+---
+
+## 👤 İletişim
+
+**Yunus Emre Tom** — yunusemretom@gmail.com

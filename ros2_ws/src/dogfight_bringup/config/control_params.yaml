@@ -1,0 +1,36 @@
+# Control parameters
+control:
+  # Attitude controller PID gains
+  yaw_kp: 0.12
+  yaw_ki: 0.003
+  yaw_kd: 0.01
+  max_roll_deg: 60.0
+
+  # Altitude PID
+  alt_kp: 0.04
+  alt_ki: 0.002
+  alt_kd: 0.01
+  max_pitch_deg: 20.0
+
+  # Distance PID (thrust control)
+  dist_kp: 0.009
+  dist_ki: 0.00005
+  dist_kd: 0.03
+  dist_target_m: 5.0
+  min_thrust: 0.30
+  max_thrust: 0.69
+  nominal_thrust: 0.55
+
+  # Visual offboard
+  pixel_to_rad_x: 0.003
+  pixel_to_rad_y: 0.001
+  max_heading_offset_deg: 40.0
+  max_pitch_offset_deg: 20.0
+  target_speed: 15.0
+  target_throttle: 0.6
+
+  # Velocity controller
+  kp_x: 0.005
+  kp_y: 0.005
+  max_vel_lateral: 10.0
+  max_vel_vertical: 10.0

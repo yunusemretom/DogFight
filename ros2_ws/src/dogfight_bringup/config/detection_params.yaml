@@ -1,0 +1,9 @@
+# Detection parameters
+detection:
+  model_type: "yolo"                    # "yolo" or "rfdetr"
+  yolo_weights: "best.pt"              # YOLO model weights path
+  rfdetr_weights: "checkpoint.pth"     # RF-DETR model weights path
+  confidence_threshold: 0.5
+  camera_topic: "/world/default/model/rc_cessna_1/link/camera_link/sensor/camera/image"
+  output_topic: "/detection/target_distance"
+  timer_period: 0.02                   # 50 Hz

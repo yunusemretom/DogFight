@@ -22,15 +22,12 @@ venv/
 # Packaging
 *.egg-info/
 dist/
-build/
 
 # ---- ROS 2 / colcon ----
-# Colcon outputs (often at workspace root)
+# Colcon outputs (workspace root and nested workspace)
 build/
 install/
 log/
-
-# In this repo there is also a nested workspace (ros2_ws)
 ros2_ws/build/
 ros2_ws/install/
 ros2_ws/log/
@@ -43,14 +40,23 @@ ros2_ws/log/
 *.db3-shm
 gps_log_*.csv
 
+# ---- Model weights (large files) ----
+*.pth
+*.pth.tmp
+*.engine
+*.onnx
+
+# ---- Video outputs ----
+*.mp4
+*.webm
+*.avi
+
 # ---- Misc ----
 *.swp
 *.swo
+*.deb
 
-# ---- Model files ----
-*.pth
-*.tmp
-*.engine
-
-cikti.mp4
-ekran_tespit_*.mp4
+# ---- Experiment outputs ----
+experiments/*/outputs/
+compare_outputs/
+videos/
