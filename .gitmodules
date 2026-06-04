@@ -4,3 +4,6 @@
 [submodule "ros2_ws/src/px4_ros_com"]
 	path = ros2_ws/src/px4_ros_com
 	url = https://github.com/PX4/px4_ros_com.git
+[submodule "TCTrack"]
+	path = TCTrack
+	url = https://github.com/vision4robotics/TCTrack.git
