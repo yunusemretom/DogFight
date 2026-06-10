@@ -1,0 +1,16 @@
+---
+layout: default
+---
+<article class="page-content">
+  <header class="page-header fade-in">
+    {% if page.icon %}<span class="page-icon">{{ page.icon }}</span>{% endif %}
+    <h1>{{ page.title }}</h1>
+    {% if page.description %}
+    <p class="page-description">{{ page.description }}</p>
+    {% endif %}
+  </header>
+
+  <div class="page-body fade-in">
+    {{ content }}
+  </div>
+</article>

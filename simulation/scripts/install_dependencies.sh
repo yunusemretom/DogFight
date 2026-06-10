@@ -48,10 +48,10 @@ log "Sistem güncelleniyor..."
 sudo apt update
 sudo apt upgrade -y
 
-#############################################
+#YGYJKYJKYYY
 
 # PX4 Kurulumu
-
+ZZN
 #############################################
 
 PX4_DIR="$HOME/PX4-Autopilot"

@@ -1,0 +1,726 @@
+---
+layout: default
+title: "Uçuş Test Masası"
+description: "Aerodinamik simülatör — kaldırma, sürükleme, süzülme ve itki hesaplayıcı"
+icon: "✈️"
+order: 1
+---
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  .tool-page *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0e1418;
+    --panel:#161f25;
+    --panel-2:#1d282f;
+    --line:#2a3940;
+    --ink:#e8eef0;
+    --ink-dim:#8fa3ac;
+    --ink-faint:#5d6f78;
+    --accent:#3fb8af;       /* teal - lift / ölçüm */
+    --warn:#e0823d;         /* amber - drag */
+    --danger:#e2574c;       /* kırmızı - stall / limit */
+    --blue:#4f9fe0;         /* mavi - itki */
+    --grid:#223038;
+    --mono:'SF Mono','Roboto Mono',ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  }
+
+  /* ---------- HEADER ---------- */
+  .tool-page .tool-header{
+    border-bottom:1px solid var(--line);
+    padding:22px 26px 18px;
+    background:linear-gradient(180deg,#121a1f,var(--bg));
+    position:relative;
+  }
+  .tool-page .tool-header::after{
+    content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;
+    background:linear-gradient(90deg,transparent,var(--accent),transparent);
+    opacity:.5;
+  }
+  .brand{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  .brand h1{
+    font-size:20px;font-weight:600;letter-spacing:-.01em;
+  }
+  .brand .tag{
+    font-family:var(--mono);font-size:11px;color:var(--accent);
+    text-transform:uppercase;letter-spacing:.18em;
+    border:1px solid var(--line);border-radius:3px;padding:3px 8px;
+  }
+  .tool-page .tool-header p{color:var(--ink-dim);font-size:13.5px;margin-top:6px;max-width:680px}
+  /* ---------- TABS ---------- */
+  .tool-page nav{
+    display:flex;gap:2px;padding:0 18px;border-bottom:1px solid var(--line);
+    background:var(--panel);overflow-x:auto;position:sticky;top:0;z-index:20;
+  }
+  .tool-page nav button{
+    background:none;border:none;color:var(--ink-dim);
+    font-family:var(--sans);font-size:13.5px;font-weight:500;
+    padding:14px 16px 12px;cursor:pointer;white-space:nowrap;
+    border-bottom:2px solid transparent;transition:color .15s,border-color .15s;
+    display:flex;align-items:center;gap:8px;
+  }
+  .tool-page nav button .num{
+    font-family:var(--mono);font-size:11px;color:var(--ink-faint);
+  }
+  .tool-page nav button:hover{color:var(--ink)}
+  .tool-page nav button.active{color:var(--ink);border-bottom-color:var(--accent)}
+  .tool-page nav button.active .num{color:var(--accent)}
+  /* ---------- LAYOUT ---------- */
+  .tool-page .tool-main{max-width:1080px;margin:0 auto;padding:26px 22px 80px}
+  .panel-head{margin-bottom:20px}
+  .panel-head h2{font-size:22px;font-weight:600;letter-spacing:-.015em;margin-bottom:8px}
+  .panel-head p{color:var(--ink-dim);font-size:14px;max-width:720px}
+  .panel-head .formula{
+    font-family:var(--mono);font-size:13px;color:var(--accent);
+    background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--accent);
+    padding:10px 14px;border-radius:4px;margin-top:14px;display:inline-block;
+  }
+  .grid{display:grid;grid-template-columns:300px 1fr;gap:22px;align-items:start}
+  @media(max-width:780px){.grid{grid-template-columns:1fr}}
+  /* control card */
+  .controls{
+    background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px;
+  }
+  .controls h3{
+    font-size:11px;text-transform:uppercase;letter-spacing:.14em;
+    color:var(--ink-faint);font-weight:600;margin-bottom:16px;
+    font-family:var(--mono);
+  }
+  .field{margin-bottom:16px}
+  .field:last-child{margin-bottom:0}
+  .field label{
+    display:flex;justify-content:space-between;align-items:baseline;
+    font-size:13px;color:var(--ink-dim);margin-bottom:6px;
+  }
+  .field label .val{
+    font-family:var(--mono);font-size:13px;color:var(--ink);font-weight:500;
+    background:var(--panel-2);padding:1px 7px;border-radius:3px;
+  }
+  .field input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;height:4px;
+    background:var(--line);border-radius:3px;outline:none;cursor:pointer;
+  }
+  .field input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;
+    background:var(--accent);cursor:pointer;border:2px solid var(--bg);
+  }
+  .field input[type=range]::-moz-range-thumb{
+    width:16px;height:16px;border-radius:50%;background:var(--accent);
+    cursor:pointer;border:2px solid var(--bg);
+  }
+  .field input[type=number],.field select{
+    width:100%;background:var(--panel-2);border:1px solid var(--line);
+    color:var(--ink);font-family:var(--mono);font-size:13px;
+    padding:8px 10px;border-radius:4px;outline:none;
+  }
+  .field input[type=number]:focus,.field select:focus{border-color:var(--accent)}
+  .field .hint{font-size:11.5px;color:var(--ink-faint);margin-top:4px;line-height:1.4}
+  /* readout chips */
+  .readouts{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:18px}
+  .chip{
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;
+    padding:12px 14px;
+  }
+  .chip .k{font-size:11px;color:var(--ink-faint);font-family:var(--mono);
+    text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}
+  .chip .v{font-size:21px;font-weight:600;font-family:var(--mono);letter-spacing:-.02em}
+  .chip .u{font-size:12px;color:var(--ink-dim);font-weight:400;margin-left:3px}
+  .chip.accent .v{color:var(--accent)}
+  .chip.warn .v{color:var(--warn)}
+  .chip.danger .v{color:var(--danger)}
+  .chip.blue .v{color:var(--blue)}
+  /* chart shell */
+  .chart-card{
+    background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px 18px 14px;
+  }
+  .chart-card .ctitle{
+    font-size:12px;color:var(--ink-dim);font-family:var(--mono);
+    text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px;
+  }
+  .chart-wrap{position:relative;width:100%;height:340px}
+  .legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:14px;font-size:12px;color:var(--ink-dim)}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .legend i{width:16px;height:3px;border-radius:2px;display:inline-block}
+  .legend i.dash{background-image:repeating-linear-gradient(90deg,currentColor 0 5px,transparent 5px 9px);height:2px}
+  /* note box */
+  .note{
+    background:var(--panel-2);border:1px solid var(--line);border-radius:6px;
+    padding:14px 16px;font-size:13px;color:var(--ink-dim);margin-top:18px;
+    line-height:1.65;
+  }
+  .note b{color:var(--ink);font-weight:600}
+  .note .diag{color:var(--accent);font-weight:600}
+  .verdict{
+    border-left:3px solid var(--accent);padding:10px 14px;margin-top:12px;
+    background:var(--panel);border-radius:0 4px 4px 0;font-size:13px;
+  }
+  .verdict.bad{border-left-color:var(--danger)}
+  .verdict.warn{border-left-color:var(--warn)}
+  .verdict.good{border-left-color:var(--accent)}
+  /* visualizer (kanat ucu girdabı / hücum açısı) */
+  .viz{background:var(--panel-2);border:1px solid var(--line);border-radius:6px;margin-top:16px;overflow:hidden}
+  .panel{display:none;animation:fade .25s ease}
+  .panel.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .tool-page .tool-footer{border-top:1px solid var(--line);padding:20px 26px;color:var(--ink-faint);font-size:12px;text-align:center}
+  .kbd{font-family:var(--mono);background:var(--panel-2);border:1px solid var(--line);border-radius:3px;padding:1px 5px;font-size:11px;color:var(--ink-dim)}
+</style>
+
+
+<div class="tool-page">
+<div class="tool-header">
+  <div class="brand">
+    <h1>Uçuş Test Masası</h1>
+    <span class="tag">Aerodinamik Simülatör</span>
+  </div>
+  <p>Konuştuğumuz her kavram ayrı bir sekmede. Soldaki değerleri kendi RC uçağına göre elle gir; grafikler ve sayılar anında güncellenir. Hiçbir şey kaydedilmez — istediğin gibi oyna.</p>
+</div>
+
+<nav id="tabs">
+  <button class="active" data-tab="lift"><span class="num">01</span> Kaldırma &amp; Stall</button>
+  <button data-tab="drag"><span class="num">02</span> Sürükleme &amp; Hücum Açısı</button>
+  <button data-tab="induced"><span class="num">03</span> İndüklenmiş Sürükleme</button>
+  <button data-tab="glide"><span class="num">04</span> Süzülme Oranı</button>
+  <button data-tab="thrust"><span class="num">05</span> Pervane İtkisi</button>
+</nav>
+
+<div class="tool-main">
+
+<!-- ============ 01 LIFT & STALL ============ -->
+<section class="panel active" id="lift">
+  <div class="panel-head">
+    <h2>Kaldırma Kuvveti ve Stall Hızı</h2>
+    <p>Uçağı havada tutan kuvvet. Ağırlığını taşıyabilmek için ulaşman gereken minimum hızı (stall hızı) burada görürsün. Hız bu değerin altına düşerse uçak çöker.</p>
+    <span class="formula">L = ½ · ρ · v² · S · C_L &nbsp;&nbsp;|&nbsp;&nbsp; v_stall = √( 2W / (ρ · S · C_Lmax) )</span>
+  </div>
+  <div class="grid">
+    <div class="controls">
+      <h3>Değerler</h3>
+      <div class="field">
+        <label>Kütle <span class="val" id="m1v">4.0 kg</span></label>
+        <input type="range" id="m1" min="0.5" max="10" step="0.1" value="4">
+        <div class="hint">Uçağın toplam ağırlığı.</div>
+      </div>
+      <div class="field">
+        <label>Kanat alanı S <span class="val" id="s1v">0.50 m²</span></label>
+        <input type="range" id="s1" min="0.1" max="1.2" step="0.01" value="0.5">
+        <div class="hint">50 dm² = 0.50 m². Senin uçağın bu civarda.</div>
+      </div>
+      <div class="field">
+        <label>Maks. kaldırma katsayısı C_Lmax <span class="val" id="cl1v">1.20</span></label>
+        <input type="range" id="cl1" min="0.4" max="1.8" step="0.05" value="1.2">
+        <div class="hint">Düz/ince levha kanat ≈ 0.8. İyi kavisli (kamburlu) profil ≈ 1.3–1.5. Flap'lı ≈ 1.8.</div>
+      </div>
+      <div class="field">
+        <label>Hava yoğunluğu ρ <span class="val" id="rho1v">1.225</span></label>
+        <input type="range" id="rho1" min="0.9" max="1.3" step="0.005" value="1.225">
+        <div class="hint">Deniz seviyesi 1.225. Yükseldikçe / sıcakta düşer.</div>
+      </div>
+    </div>
+    <div>
+      <div class="readouts">
+        <div class="chip danger"><div class="k">Stall hızı</div><div class="v" id="vstall">–<span class="u">m/s</span></div></div>
+        <div class="chip"><div class="k">≈ km/h</div><div class="v" id="vstallkmh">–<span class="u">km/h</span></div></div>
+        <div class="chip accent"><div class="k">Gereken kaldırma</div><div class="v" id="wreq">–<span class="u">N</span></div></div>
+        <div class="chip"><div class="k">Kanat yükü</div><div class="v" id="wload">–<span class="u">kg/m²</span></div></div>
+      </div>
+      <div class="chart-card">
+        <div class="ctitle">Hıza göre üretilen kaldırma — kırmızı çizgi = ağırlık</div>
+        <div class="chart-wrap"><canvas id="liftChart" role="img" aria-label="Hız arttıkça kaldırmanın karesel arttığını gösteren grafik"></canvas></div>
+        <div class="legend">
+          <span><i style="background:var(--accent)"></i>Üretilen kaldırma (½ρv²S·C_L)</span>
+          <span><i class="dash" style="color:var(--danger)"></i>Ağırlık (havada kalma eşiği)</span>
+        </div>
+      </div>
+      <div class="verdict" id="liftVerdict"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 02 DRAG & AoA ============ -->
+<section class="panel" id="drag">
+  <div class="panel-head">
+    <h2>Sürükleme ve Hücum Açısı</h2>
+    <p>Hücum açısı (kanadın havaya karşı eğimi) arttıkça kaldırma artar — ama bir noktaya kadar. Kritik açıyı geçince akış kanattan ayrılır, kaldırma çöker: bu <b>stall</b>'dır. Sürükleme ise hep artar.</p>
+    <span class="formula">C_L = a · α &nbsp;(stall'a kadar) &nbsp;&nbsp;|&nbsp;&nbsp; C_D = C_D0 + k · C_L²</span>
+  </div>
+  <div class="grid">
+    <div class="controls">
+      <h3>Değerler</h3>
+      <div class="field">
+        <label>Kritik (stall) açısı <span class="val" id="acrv">15°</span></label>
+        <input type="range" id="acr" min="8" max="20" step="0.5" value="15">
+        <div class="hint">Akışın ayrıldığı açı. Tipik profil ≈ 15°.</div>
+      </div>
+      <div class="field">
+        <label>Kaldırma eğim katsayısı <span class="val" id="slpv">0.10</span></label>
+        <input type="range" id="slp" min="0.05" max="0.12" step="0.005" value="0.10">
+        <div class="hint">Derece başına C_L artışı. İnce kanat teorisi ≈ 0.11.</div>
+      </div>
+      <div class="field">
+        <label>Parazit sürükleme C_D0 <span class="val" id="cd0v">0.04</span></label>
+        <input type="range" id="cd0" min="0.01" max="0.10" step="0.005" value="0.04">
+        <div class="hint">Sürtünme + şekil direnci. "Kirli" gövde ↑.</div>
+      </div>
+      <div class="field">
+        <label>Şu an gösterilen açı <span class="val" id="aoaNowv">8°</span></label>
+        <input type="range" id="aoaNow" min="0" max="20" step="0.5" value="8">
+        <div class="hint">İşaretçiyi gez: stall öncesi mi sonrası mı?</div>
+      </div>
+    </div>
+    <div>
+      <div class="readouts">
+        <div class="chip accent"><div class="k">Bu açıda C_L</div><div class="v" id="clNow">–</div></div>
+        <div class="chip warn"><div class="k">Bu açıda C_D</div><div class="v" id="cdNow">–</div></div>
+        <div class="chip"><div class="k">L/D oranı</div><div class="v" id="ldNow">–</div></div>
+        <div class="chip danger"><div class="k">Durum</div><div class="v" id="stallState" style="font-size:15px">–</div></div>
+      </div>
+      <div class="chart-card">
+        <div class="ctitle">Hücum açısına göre C_L ve C_D — dikey çizgi = seçtiğin açı</div>
+        <div class="chart-wrap"><canvas id="aoaChart" role="img" aria-label="Hücum açısına göre kaldırma ve sürükleme katsayıları"></canvas></div>
+        <div class="legend">
+          <span><i style="background:var(--accent)"></i>C_L (kaldırma)</span>
+          <span><i style="background:var(--warn)"></i>C_D (sürükleme)</span>
+          <span><i class="dash" style="color:var(--ink-dim)"></i>Seçili açı</span>
+        </div>
+      </div>
+      <div class="verdict" id="aoaVerdict"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 03 INDUCED DRAG ============ -->
+<section class="panel" id="induced">
+  <div class="panel-head">
+    <h2>İndüklenmiş Sürükleme (Girdap Kaybı)</h2>
+    <p>Kaldırma üretmenin kaçınılmaz yan ürünü. Kanat ucundan dolanan girdaplar geriye doğru bir direnç doğurur. <b>Uzun-ince kanat (yüksek en-boy oranı) bunu azaltır.</b> En-boy oranını değiştir, etkisini gör.</p>
+    <span class="formula">AR = b² / S &nbsp;&nbsp;|&nbsp;&nbsp; C_Di = C_L² / (π · AR · e)</span>
+  </div>
+  <div class="grid">
+    <div class="controls">
+      <h3>Değerler</h3>
+      <div class="field">
+        <label>Kanat açıklığı b <span class="val" id="bv">1.80 m</span></label>
+        <input type="range" id="b" min="0.6" max="4" step="0.05" value="1.8">
+        <div class="hint">Uçtan uca. Uzadıkça girdap zayıflar.</div>
+      </div>
+      <div class="field">
+        <label>Kanat alanı S <span class="val" id="s3v">0.50 m²</span></label>
+        <input type="range" id="s3" min="0.1" max="1.2" step="0.01" value="0.5">
+      </div>
+      <div class="field">
+        <label>Kaldırma katsayısı C_L <span class="val" id="cl3v">0.80</span></label>
+        <input type="range" id="cl3" min="0.2" max="1.6" step="0.05" value="0.8">
+        <div class="hint">Yavaş/ağır uçuşta yüksek → girdap kaybı ↑.</div>
+      </div>
+      <div class="field">
+        <label>Oswald verimlilik e <span class="val" id="ev">0.80</span></label>
+        <input type="range" id="e" min="0.6" max="1.0" step="0.01" value="0.80">
+        <div class="hint">Eliptik kanat = 1.0. Tipik = 0.7–0.8.</div>
+      </div>
+    </div>
+    <div>
+      <div class="readouts">
+        <div class="chip accent"><div class="k">En-boy oranı AR</div><div class="v" id="arOut">–</div></div>
+        <div class="chip warn"><div class="k">İndüklenmiş C_Di</div><div class="v" id="cdiOut">–</div></div>
+        <div class="chip"><div class="k">Ort. veter (genişlik)</div><div class="v" id="chordOut">–<span class="u">m</span></div></div>
+        <div class="chip"><div class="k">Kanat tipi</div><div class="v" id="wingType" style="font-size:14px">–</div></div>
+      </div>
+      <div class="chart-card">
+        <div class="ctitle">En-boy oranına göre indüklenmiş sürükleme — nokta = senin kanadın</div>
+        <div class="chart-wrap"><canvas id="indChart" role="img" aria-label="En boy oranı arttıkça indüklenmiş sürüklemenin azaldığını gösteren eğri"></canvas></div>
+        <div class="legend">
+          <span><i style="background:var(--warn)"></i>C_Di — en-boy oranına göre</span>
+          <span><i style="background:var(--accent);border-radius:50%;width:10px;height:10px"></i>Senin kanadın</span>
+        </div>
+      </div>
+      <div class="verdict" id="indVerdict"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 04 GLIDE ============ -->
+<section class="panel" id="glide">
+  <div class="panel-head">
+    <h2>Süzülme Oranı (L/D)</h2>
+    <p>Motor kapalıyken 1 metre düşerken kaç metre ileri gidersin? Bu tamamen kaldırma/sürükleme oranıdır. Senin uçağın "taş gibi düşüyor" demiştin — burada nedenini sayıyla göreceksin. Toplam sürükleme = parazit + indüklenmiş.</p>
+    <span class="formula">L/D = C_L / (C_D0 + C_L²/(π·AR·e)) &nbsp;&nbsp;|&nbsp;&nbsp; Süzülme oranı = L/D</span>
+  </div>
+  <div class="grid">
+    <div class="controls">
+      <h3>Değerler</h3>
+      <div class="field">
+        <label>Parazit sürükleme C_D0 <span class="val" id="cd0gv">0.04</span></label>
+        <input type="range" id="cd0g" min="0.01" max="0.12" step="0.005" value="0.04">
+        <div class="hint">Temiz planör ≈ 0.015. Kirli RC ≈ 0.05+.</div>
+      </div>
+      <div class="field">
+        <label>En-boy oranı AR <span class="val" id="argv">6.5</span></label>
+        <input type="range" id="arg" min="3" max="30" step="0.5" value="6.5">
+        <div class="hint">Planör 20+, trainer 6–8, akrobasi 4–5.</div>
+      </div>
+      <div class="field">
+        <label>Oswald verimlilik e <span class="val" id="egv">0.80</span></label>
+        <input type="range" id="eg" min="0.6" max="1.0" step="0.01" value="0.80">
+      </div>
+      <div class="field">
+        <label>Düşülen yükseklik (test) <span class="val" id="dropv">10 m</span></label>
+        <input type="range" id="drop" min="1" max="50" step="1" value="10">
+        <div class="hint">Bu kadar düşerken kaç metre ileri gidersin?</div>
+      </div>
+    </div>
+    <div>
+      <div class="readouts">
+        <div class="chip accent"><div class="k">En iyi L/D</div><div class="v" id="ldmax">–</div></div>
+        <div class="chip"><div class="k">En iyi C_L (bu noktada)</div><div class="v" id="clopt">–</div></div>
+        <div class="chip blue"><div class="k">İleri menzil</div><div class="v" id="range">–<span class="u">m</span></div></div>
+        <div class="chip"><div class="k">Süzülme açısı</div><div class="v" id="glideAngle">–<span class="u">°</span></div></div>
+      </div>
+      <div class="chart-card">
+        <div class="ctitle">C_L'e göre süzülme oranı — tepe noktası en iyi süzülme</div>
+        <div class="chart-wrap"><canvas id="glideChart" role="img" aria-label="Kaldırma katsayısına göre süzülme oranı eğrisi"></canvas></div>
+        <div class="legend">
+          <span><i style="background:var(--accent)"></i>L/D (süzülme oranı)</span>
+          <span><i class="dash" style="color:var(--blue)"></i>En iyi nokta</span>
+        </div>
+      </div>
+      <div class="verdict" id="glideVerdict"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 05 THRUST ============ -->
+<section class="panel" id="thrust">
+  <div class="panel-head">
+    <h2>Pervane İtkisi: Statik vs Uçuş</h2>
+    <p>Pervane bir "vida" gibi. Yerde dururken (statik) en çok iter — senin ölçtüğün 6 kg bu. Uçak hızlanınca pervane havayı "ısıramaz" ve itki düşer. Sürükleme eğrisiyle kesiştiği yer uçağın denge hızıdır.</p>
+    <span class="formula">v_pervane ≈ devir × hatve &nbsp;&nbsp;|&nbsp;&nbsp; İtki(v) ≈ T₀ · (1 − v / v_max)</span>
+  </div>
+  <div class="grid">
+    <div class="controls">
+      <h3>Değerler</h3>
+      <div class="field">
+        <label>Statik itki T₀ <span class="val" id="t0v">6.0 kg</span></label>
+        <input type="range" id="t0" min="1" max="12" step="0.1" value="6">
+        <div class="hint">Uçak dururken ölçtüğün itki.</div>
+      </div>
+      <div class="field">
+        <label>Pervane çapı <span class="val" id="diav">14 inç</span></label>
+        <input type="range" id="dia" min="6" max="20" step="0.5" value="14">
+      </div>
+      <div class="field">
+        <label>Pervane hatvesi (pitch) <span class="val" id="pitchv">7 inç</span></label>
+        <input type="range" id="pitch" min="3" max="14" step="0.5" value="7">
+        <div class="hint">Düşük hatve = yerde güçlü, uçuşta zayıf. Yüksek = tam tersi.</div>
+      </div>
+      <div class="field">
+        <label>Motor devri (yaklaşık) <span class="val" id="rpmv">9000 rpm</span></label>
+        <input type="range" id="rpm" min="3000" max="16000" step="500" value="9000">
+        <div class="hint">6S'de güçlü motor yüksek devir döndürür.</div>
+      </div>
+      <div class="field">
+        <label>Uçağın sürükleme katsayısı <span class="val" id="dragKv">0.012</span></label>
+        <input type="range" id="dragK" min="0.003" max="0.04" step="0.001" value="0.012">
+        <div class="hint">Toplam direnci ayarlar (kg = k·v²). Yüksek = kirli uçak.</div>
+      </div>
+    </div>
+    <div>
+      <div class="readouts">
+        <div class="chip blue"><div class="k">Pervane max hızı</div><div class="v" id="vmax">–<span class="u">m/s</span></div></div>
+        <div class="chip accent"><div class="k">Denge (cruise) hızı</div><div class="v" id="vcruise">–<span class="u">m/s</span></div></div>
+        <div class="chip"><div class="k">≈ km/h</div><div class="v" id="vcruisekmh">–<span class="u">km/h</span></div></div>
+        <div class="chip warn"><div class="k">Yarım gazda itki fazlası</div><div class="v" id="halfMargin" style="font-size:15px">–</div></div>
+      </div>
+      <div class="chart-card">
+        <div class="ctitle">İtki (hızla düşer) vs Sürükleme (hızla artar) — kesişim = cruise hızı</div>
+        <div class="chart-wrap"><canvas id="thrustChart" role="img" aria-label="İtki ve sürükleme eğrilerinin kesişimini gösteren grafik"></canvas></div>
+        <div class="legend">
+          <span><i style="background:var(--blue)"></i>Tam gaz itki</span>
+          <span><i style="background:var(--blue);opacity:.5"></i>Yarım gaz itki</span>
+          <span><i class="dash" style="color:var(--warn)"></i>Uçağın sürüklemesi</span>
+        </div>
+      </div>
+      <div class="verdict" id="thrustVerdict"></div>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<div class="tool-footer">
+  Uçuş Test Masası · Tüm hesaplar standart aerodinamik denklemlerin basitleştirilmiş halidir · Değerler tahmin/öğrenme amaçlıdır, sertifikasyon için değil
+</div>
+</div><!-- .tool-page -->
+
+<script>
+const $ = id => document.getElementById(id);
+const rho0 = 1.225;
+// chart.js ortak ayar
+Chart.defaults.color = '#8fa3ac';
+Chart.defaults.font.family = "'SF Mono','Roboto Mono',ui-monospace,monospace";
+Chart.defaults.font.size = 11;
+const gridClr = '#223038';
+const axisOpts = (xt,yt)=>({
+  x:{title:{display:true,text:xt,color:'#5d6f78'},grid:{color:gridClr},ticks:{maxRotation:0}},
+  y:{title:{display:true,text:yt,color:'#5d6f78'},grid:{color:gridClr},beginAtZero:true}
+});
+
+/* ---------- TABS ---------- */
+document.querySelectorAll('#tabs button').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('#tabs button').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    $(b.dataset.tab).classList.add('active');
+    // grafikleri yeniden boyutlandır
+    setTimeout(()=>Object.values(charts).forEach(c=>c&&c.resize()),50);
+  };
+});
+
+const charts={};
+
+/* ===================================================== 01 LIFT */
+charts.lift = new Chart($('liftChart'),{
+  type:'line',
+  data:{labels:[],datasets:[
+    {label:'Kaldırma',data:[],borderColor:'#3fb8af',backgroundColor:'rgba(63,184,175,.08)',fill:true,tension:.3,pointRadius:0,borderWidth:2},
+    {label:'Ağırlık',data:[],borderColor:'#e2574c',borderDash:[6,4],pointRadius:0,borderWidth:1.5}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:axisOpts('Hız (m/s)','Kuvvet (N)')}
+});
+function updLift(){
+  const m=+$('m1').value, S=+$('s1').value, cl=+$('cl1').value, rho=+$('rho1').value;
+  $('m1v').textContent=m.toFixed(1)+' kg';
+  $('s1v').textContent=S.toFixed(2)+' m²';
+  $('cl1v').textContent=cl.toFixed(2);
+  $('rho1v').textContent=rho.toFixed(3);
+  const W=m*9.81;
+  const vstall=Math.sqrt(2*W/(rho*S*cl));
+  $('vstall').innerHTML=vstall.toFixed(1)+'<span class="u">m/s</span>';
+  $('vstallkmh').innerHTML=(vstall*3.6).toFixed(0)+'<span class="u">km/h</span>';
+  $('wreq').innerHTML=W.toFixed(0)+'<span class="u">N</span>';
+  $('wload').innerHTML=(m/S).toFixed(1)+'<span class="u">kg/m²</span>';
+  const vmax=Math.ceil(vstall*2.2);
+  const labels=[],lift=[],wt=[];
+  for(let v=0;v<=vmax;v+=Math.max(1,Math.round(vmax/14))){
+    labels.push(v);
+    lift.push(0.5*rho*v*v*S*cl);
+    wt.push(W);
+  }
+  charts.lift.data.labels=labels;
+  charts.lift.data.datasets[0].data=lift;
+  charts.lift.data.datasets[1].data=wt;
+  charts.lift.update('none');
+  const wl=m/S;
+  let v=$('liftVerdict'), cls='good', txt='';
+  if(vstall>14){cls='bad';txt=`<b>Stall hızın yüksek (${vstall.toFixed(1)} m/s ≈ ${(vstall*3.6).toFixed(0)} km/h).</b> Uçak havada kalmak için hızlı uçmak zorunda — bu yüzden gaz kesilince hemen çöküyor. C_Lmax'ı artır (daha kavisli profil) ya da uçağı hafiflet.`;}
+  else if(vstall>9){cls='warn';txt=`Stall hızın orta düzeyde (${vstall.toFixed(1)} m/s). Kabul edilebilir ama daha kavisli bir profil rahatlatır.`;}
+  else{cls='good';txt=`<b>Stall hızın düşük (${vstall.toFixed(1)} m/s) — iyi.</b> Uçak yavaşta da havada kalabilmeli. Sorun kaldırmada değilse sürükleme/itki sekmelerine bak.`;}
+  v.className='verdict '+cls; v.innerHTML=txt;
+}
+['m1','s1','cl1','rho1'].forEach(id=>$(id).addEventListener('input',updLift));
+
+/* ===================================================== 02 AoA */
+charts.aoa = new Chart($('aoaChart'),{
+  type:'line',
+  data:{labels:[],datasets:[
+    {label:'C_L',data:[],borderColor:'#3fb8af',pointRadius:0,borderWidth:2,tension:.2,yAxisID:'y'},
+    {label:'C_D',data:[],borderColor:'#e0823d',pointRadius:0,borderWidth:2,tension:.2,yAxisID:'y'},
+    {label:'sel',data:[],borderColor:'#8fa3ac',borderDash:[4,4],pointRadius:0,borderWidth:1,yAxisID:'y'}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:axisOpts('Hücum açısı (°)','Katsayı')}
+});
+function clAt(a,acr,slp){
+  if(a<=acr) return slp*a;
+  // stall sonrası düşüş
+  const peak=slp*acr;
+  return Math.max(0.1, peak - (a-acr)*slp*1.4);
+}
+function updAoA(){
+  const acr=+$('acr').value, slp=+$('slp').value, cd0=+$('cd0').value, aN=+$('aoaNow').value;
+  $('acrv').textContent=acr+'°';
+  $('slpv').textContent=slp.toFixed(3);
+  $('cd0v').textContent=cd0.toFixed(3);
+  $('aoaNowv').textContent=aN+'°';
+  const labels=[],cl=[],cd=[],sel=[];
+  let maxY=0;
+  for(let a=0;a<=20;a+=1){
+    labels.push(a);
+    const c=clAt(a,acr,slp);
+    const d=cd0+0.05*c*c;
+    cl.push(c); cd.push(d);
+    maxY=Math.max(maxY,c,d);
+  }
+  const cln=clAt(aN,acr,slp), cdn=cd0+0.05*cln*cln;
+  sel.length=0; labels.forEach((_,i)=>sel.push(i===Math.round(aN)?maxY*1.05:null));
+  charts.aoa.data.labels=labels;
+  charts.aoa.data.datasets[0].data=cl;
+  charts.aoa.data.datasets[1].data=cd;
+  charts.aoa.data.datasets[2].data=sel;
+  charts.aoa.options.scales.y.max=maxY*1.1;
+  charts.aoa.update('none');
+  $('clNow').textContent=cln.toFixed(2);
+  $('cdNow').textContent=cdn.toFixed(3);
+  $('ldNow').textContent=(cln/cdn).toFixed(1);
+  let st,vc,vt;
+  if(aN<acr-2){st='Güvenli';vc='good';vt=`<b>${aN}° — stall öncesi, güvenli bölge.</b> Kaldırma açıyla artıyor. L/D = ${(cln/cdn).toFixed(1)}.`;}
+  else if(aN<acr){st='Sınırda';vc='warn';vt=`<b>${aN}° — kritik açıya (${acr}°) çok yakın.</b> Burada uçmak risklidir; küçük bir bozulma stall'a sokar.`;}
+  else{st='STALL!';vc='bad';vt=`<b>${aN}° — kritik açı aşıldı, STALL.</b> Akış kanattan ayrıldı, kaldırma çöktü, sürükleme fırladı. Uçak düşmeye başlar.`;}
+  $('stallState').textContent=st;
+  const v=$('aoaVerdict'); v.className='verdict '+vc; v.innerHTML=vt;
+}
+['acr','slp','cd0','aoaNow'].forEach(id=>$(id).addEventListener('input',updAoA));
+
+/* ===================================================== 03 INDUCED */
+charts.ind = new Chart($('indChart'),{
+  type:'line',
+  data:{labels:[],datasets:[
+    {label:'C_Di',data:[],borderColor:'#e0823d',backgroundColor:'rgba(224,130,61,.08)',fill:true,pointRadius:0,borderWidth:2,tension:.3},
+    {label:'siz',data:[],borderColor:'#3fb8af',backgroundColor:'#3fb8af',pointRadius:6,type:'scatter',showLine:false}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:axisOpts('En-boy oranı (AR)','İndüklenmiş sürükleme C_Di')}
+});
+function updInd(){
+  const b=+$('b').value, S=+$('s3').value, cl=+$('cl3').value, e=+$('e').value;
+  $('bv').textContent=b.toFixed(2)+' m';
+  $('s3v').textContent=S.toFixed(2)+' m²';
+  $('cl3v').textContent=cl.toFixed(2);
+  $('ev').textContent=e.toFixed(2);
+  const AR=b*b/S;
+  const cdi=cl*cl/(Math.PI*AR*e);
+  const chord=S/b;
+  $('arOut').textContent=AR.toFixed(1);
+  $('cdiOut').textContent=cdi.toFixed(4);
+  $('chordOut').innerHTML=chord.toFixed(2)+'<span class="u">m</span>';
+  let wt;
+  if(AR<5) wt='Kısa-geniş';
+  else if(AR<9) wt='Dengeli';
+  else if(AR<16) wt='Uzun-ince';
+  else wt='Planör';
+  $('wingType').textContent=wt;
+  const labels=[],data=[];
+  for(let ar=3;ar<=30;ar+=1){labels.push(ar);data.push(cl*cl/(Math.PI*ar*e));}
+  charts.ind.data.labels=labels;
+  charts.ind.data.datasets[0].data=data;
+  charts.ind.data.datasets[1].data=[{x:AR,y:cdi}];
+  charts.ind.options.scales.x.type='linear';
+  charts.ind.options.scales.x.min=3; charts.ind.options.scales.x.max=30;
+  charts.ind.update('none');
+  let v=$('indVerdict'),cls,txt;
+  if(AR<5){cls='warn';txt=`<b>AR = ${AR.toFixed(1)} — kısa-geniş kanat.</b> Girdap kaybı yüksek (C_Di = ${cdi.toFixed(4)}). Kanadı uzatırsan bu hızla düşer. Akrobasi uçakları çeviklik için bunu kabul eder; süzülme uçağı için kötü.`;}
+  else if(AR<9){cls='good';txt=`<b>AR = ${AR.toFixed(1)} — dengeli.</b> Trainer/spor uçak aralığı. Girdap kaybı makul.`;}
+  else{cls='good';txt=`<b>AR = ${AR.toFixed(1)} — uzun-ince, verimli kanat.</b> Girdap kaybı çok düşük (C_Di = ${cdi.toFixed(4)}). Süzülme için ideal.`;}
+  v.className='verdict '+cls; v.innerHTML=txt;
+}
+['b','s3','cl3','e'].forEach(id=>$(id).addEventListener('input',updInd));
+
+/* ===================================================== 04 GLIDE */
+charts.glide = new Chart($('glideChart'),{
+  type:'line',
+  data:{labels:[],datasets:[
+    {label:'L/D',data:[],borderColor:'#3fb8af',backgroundColor:'rgba(63,184,175,.08)',fill:true,pointRadius:0,borderWidth:2,tension:.3},
+    {label:'best',data:[],borderColor:'#4f9fe0',borderDash:[5,4],pointRadius:0,borderWidth:1.5}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:axisOpts('Kaldırma katsayısı C_L','Süzülme oranı L/D')}
+});
+function updGlide(){
+  const cd0=+$('cd0g').value, AR=+$('arg').value, e=+$('eg').value, drop=+$('drop').value;
+  $('cd0gv').textContent=cd0.toFixed(3);
+  $('argv').textContent=AR.toFixed(1);
+  $('egv').textContent=e.toFixed(2);
+  $('dropv').textContent=drop+' m';
+  const k=1/(Math.PI*AR*e);
+  // en iyi L/D: C_L_opt = sqrt(cd0/k), LDmax = 1/(2 sqrt(cd0*k))
+  const clOpt=Math.sqrt(cd0/k);
+  const ldmax=1/(2*Math.sqrt(cd0*k));
+  $('ldmax').textContent=ldmax.toFixed(1);
+  $('clopt').textContent=clOpt.toFixed(2);
+  $('range').innerHTML=(ldmax*drop).toFixed(0)+'<span class="u">m</span>';
+  $('glideAngle').innerHTML=(Math.atan(1/ldmax)*180/Math.PI).toFixed(1)+'<span class="u">°</span>';
+  const labels=[],data=[],best=[];
+  for(let cl=0.1;cl<=1.6;cl+=0.05){
+    const cd=cd0+k*cl*cl;
+    labels.push(cl.toFixed(2));
+    data.push(cl/cd);
+    best.push(ldmax);
+  }
+  charts.glide.data.labels=labels;
+  charts.glide.data.datasets[0].data=data;
+  charts.glide.data.datasets[1].data=best;
+  charts.glide.update('none');
+  let v=$('glideVerdict'),cls,txt;
+  if(ldmax<7){cls='bad';txt=`<b>En iyi süzülme oranı sadece ${ldmax.toFixed(1)}:1 — çok kötü.</b> 1 m düşerken yalnızca ${ldmax.toFixed(1)} m ileri gidersin. "Taş gibi düşüyor" dediğin durum tam bu. Sebep: ya parazit sürükleme (C_D0) yüksek (kirli/kaba gövde), ya da en-boy oranı (AR) düşük. İkisini de iyileştir.`;}
+  else if(ldmax<12){cls='warn';txt=`Süzülme oranı ${ldmax.toFixed(1)}:1 — orta. Trainer için kabul edilebilir ama C_D0'ı düşürüp AR'ı artırarak rahatça 15+'a çıkarabilirsin.`;}
+  else{cls='good';txt=`<b>Süzülme oranı ${ldmax.toFixed(1)}:1 — iyi.</b> Motor kapalıyken bile uçak rahat süzülür. 1 m düşüşte ${ldmax.toFixed(1)} m ileri.`;}
+  v.className='verdict '+cls; v.innerHTML=txt;
+}
+['cd0g','arg','eg','drop'].forEach(id=>$(id).addEventListener('input',updGlide));
+
+/* ===================================================== 05 THRUST */
+charts.thrust = new Chart($('thrustChart'),{
+  type:'line',
+  data:{labels:[],datasets:[
+    {label:'Tam gaz',data:[],borderColor:'#4f9fe0',pointRadius:0,borderWidth:2,tension:.2},
+    {label:'Yarım gaz',data:[],borderColor:'rgba(79,159,224,.5)',pointRadius:0,borderWidth:2,tension:.2},
+    {label:'Sürükleme',data:[],borderColor:'#e0823d',borderDash:[6,4],pointRadius:0,borderWidth:2,tension:.2}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:axisOpts('Hız (m/s)','Kuvvet (kg-f)')}
+});
+function updThrust(){
+  const t0=+$('t0').value, dia=+$('dia').value, pitch=+$('pitch').value, rpm=+$('rpm').value, k=+$('dragK').value;
+  $('t0v').textContent=t0.toFixed(1)+' kg';
+  $('diav').textContent=dia.toFixed(1)+' inç';
+  $('pitchv').textContent=pitch.toFixed(1)+' inç';
+  $('rpmv').textContent=rpm+' rpm';
+  $('dragKv').textContent=k.toFixed(3);
+  // pervane teorik max hız = rpm * pitch -> m/s. pitch inç/tur, rpm tur/dk
+  // pitch(inç)->m: *0.0254 ; rpm->rps: /60
+  const vmax=rpm/60*pitch*0.0254;
+  $('vmax').innerHTML=vmax.toFixed(1)+'<span class="u">m/s</span>';
+  const labels=[],full=[],half=[],drag=[];
+  const vend=Math.max(vmax*1.05, 35);
+  let vcruise=null;
+  for(let v=0;v<=vend;v+=Math.max(1,Math.round(vend/16))){
+    labels.push(v);
+    const tf=Math.max(0,t0*(1-v/vmax));
+    const th=Math.max(0,(t0*0.5)*(1-v/vmax));
+    const d=k*v*v;
+    full.push(tf); half.push(th); drag.push(d);
+  }
+  // cruise hızı: tam gaz itki = sürükleme  -> t0(1-v/vmax)=k v^2
+  // çöz: k v^2 + (t0/vmax) v - t0 = 0
+  const a=k, bq=t0/vmax, c=-t0;
+  const disc=bq*bq-4*a*c;
+  if(disc>=0){vcruise=(-bq+Math.sqrt(disc))/(2*a);}
+  charts.thrust.data.labels=labels;
+  charts.thrust.data.datasets[0].data=full;
+  charts.thrust.data.datasets[1].data=half;
+  charts.thrust.data.datasets[2].data=drag;
+  charts.thrust.update('none');
+  if(vcruise){
+    $('vcruise').innerHTML=vcruise.toFixed(1)+'<span class="u">m/s</span>';
+    $('vcruisekmh').innerHTML=(vcruise*3.6).toFixed(0)+'<span class="u">km/h</span>';
+  }else{$('vcruise').textContent='—';$('vcruisekmh').textContent='—';}
+  // yarım gazda denge var mı?
+  const ah=k, bh=(t0*0.5)/vmax, ch=-(t0*0.5);
+  const dh=bh*bh-4*ah*ch;
+  let vhalf = dh>=0 ? (-bh+Math.sqrt(dh))/(2*ah) : null;
+  let v=$('thrustVerdict'),cls,txt;
+  if(vhalf && vhalf>3){
+    $('halfMargin').textContent='Var ✓';
+    cls='good';
+    txt=`<b>Yarım gazda denge hızı ${vhalf.toFixed(1)} m/s — uçak yarım gazda da uçabilir.</b> Tam gaz cruise ≈ ${vcruise?vcruise.toFixed(1):'—'} m/s, pervane max ${vmax.toFixed(1)} m/s.`;
+  } else {
+    $('halfMargin').textContent='Yok ✗';
+    cls='bad';
+    txt=`<b>Yarım gazda itki sürüklemeyi yenemiyor — uçak alçalır.</b> Tam senin yaşadığın sorun. Çözüm: ya sürüklemeyi düşür (C_D ↓, daha temiz uçak), ya da pervane hatvesini değiştir. Hatve çok düşükse pervane max hızı (${vmax.toFixed(1)} m/s) düşük kalıyor ve uçuş itkisi erken çöküyor.`;
+  }
+  v.className='verdict '+cls; v.innerHTML=txt;
+}
+['t0','dia','pitch','rpm','dragK'].forEach(id=>$(id).addEventListener('input',updThrust));
+
+/* init */
+updLift(); updAoA(); updInd(); updGlide(); updThrust();
+</script>
+
+

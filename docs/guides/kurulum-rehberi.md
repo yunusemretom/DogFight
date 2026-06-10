@@ -1,6 +1,10 @@
-# Kurulum ve Çalıştırma Rehberi
-
-Bu rehber, DogFight projesini sıfırdan kurmak ve çalıştırmak için adım adım talimatlar içerir.
+---
+layout: page
+title: "Kurulum ve Çalıştırma Rehberi"
+description: "DogFight projesini sıfırdan kurmak ve çalıştırmak için adım adım talimatlar"
+icon: "🚀"
+order: 1
+---
 
 ## Ön Gereksinimler
 

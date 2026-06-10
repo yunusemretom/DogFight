@@ -1,4 +1,10 @@
-# Sistem Mimarisi
+---
+layout: page
+title: "Sistem Mimarisi"
+description: "DogFight sisteminin katmanlı mimarisi, veri akışı ve ROS 2 topic haritası"
+icon: "📐"
+permalink: /architecture/
+---
 
 ## Genel Bakış
 
@@ -42,26 +48,30 @@ DogFight sistemi, PX4 Autopilot üzerinde çalışan RC sabit kanat uçakları o
 
 ### Tespit → Takip → Kontrol Pipeline
 
-```mermaid
-graph LR
-    A[Kamera Sensörü] --> B[YOLO/RF-DETR Detection]
-    B --> C["/yolo/target_distance"]
-    C --> D[Visual Offboard Controller]
-    D --> E["/px4_1/fmu/in/trajectory_setpoint"]
-    E --> F[PX4 Autopilot]
-    F --> G[RC Cessna Uçak]
+```
+Kamera Sensörü → YOLO/RF-DETR Detection → /yolo/target_distance
+    → Visual Offboard Controller → /px4_1/fmu/in/trajectory_setpoint
+    → PX4 Autopilot → RC Cessna Uçak
 ```
 
 ### GPS Takip Pipeline
 
-```mermaid
-graph LR
-    A1[PX4_1 GPS] --> B1[GPS Tracker Node]
-    A2[PX4_3 GPS] --> B1
-    B1 --> C1[Mesafe & Yön Hesaplama]
-    C1 --> D1[CSV Log]
-    C1 --> E1[Terminal Durum Gösterimi]
 ```
+PX4_1 GPS ──┐
+             ├──→ GPS Tracker Node → Mesafe & Yön Hesaplama → CSV Log
+PX4_3 GPS ──┘                                               → Terminal Gösterim
+```
+
+## ROS 2 Topic'leri
+
+| Topic | Mesaj Tipi | Açıklama |
+|-------|-----------|----------|
+| `/yolo/target_distance` | `geometry_msgs/Point` | YOLO hedef merkez sapması (dx, dy, confidence) |
+| `/px4_1/fmu/out/vehicle_gps_position` | `px4_msgs/SensorGps` | Araç 1 GPS konumu |
+| `/px4_3/fmu/out/vehicle_gps_position` | `px4_msgs/SensorGps` | Araç 2 GPS konumu |
+| `/px4_1/fmu/in/offboard_control_mode` | `px4_msgs/OffboardControlMode` | Offboard kontrol modu |
+| `/px4_1/fmu/in/trajectory_setpoint` | `px4_msgs/TrajectorySetpoint` | Yörünge hedef noktası |
+| `/px4_1/fmu/in/vehicle_attitude_setpoint_v1` | `px4_msgs/VehicleAttitudeSetpoint` | Attitude hedef noktası |
 
 ## Paket Sorumlulukları
 

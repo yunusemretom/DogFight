@@ -1,0 +1,51 @@
+# ─── Site Ayarları ───
+title: DogFight
+description: "PX4 + ROS 2 ile RC Uçak Hedef Takip Sistemi — TEKNOFEST"
+url: "https://yunusemretom.github.io"
+baseurl: "/DogFight"
+lang: tr
+
+# ─── Build ───
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+  hard_wrap: false
+
+highlighter: rouge
+permalink: pretty
+
+plugins:
+  - jekyll-seo-tag
+
+# ─── Dosya Hariç Tutma ───
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - README.md
+  - vendor
+
+# ─── Varsayılan Front Matter ───
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: "page"
+
+# ─── Navigasyon ───
+navigation:
+  - title: Ana Sayfa
+    url: /
+    icon: "🏠"
+  - title: Mimari
+    url: /architecture/
+    icon: "📐"
+  - title: Rehberler
+    url: /guides/
+    icon: "📖"
+  - title: Deneyler
+    url: /experiments/
+    icon: "🧪"
+  - title: Araçlar
+    url: /tools/
+    icon: "🔧"

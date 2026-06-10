@@ -1,0 +1,40 @@
+---
+layout: default
+---
+<article class="page-content">
+  <header class="page-header fade-in">
+    {% if page.icon %}<span class="page-icon">{{ page.icon }}</span>{% endif %}
+    <h1>{{ page.title }}</h1>
+    {% if page.description %}
+    <p class="page-description">{{ page.description }}</p>
+    {% endif %}
+  </header>
+
+  {% if content != "" and content != nil %}
+  <div class="page-body fade-in">
+    {{ content }}
+  </div>
+  {% endif %}
+
+  <!-- Alt sayfaları otomatik listele -->
+  <div class="section-grid fade-in">
+    {% assign section_path = page.section_path | default: page.dir %}
+    {% assign pages_list = site.pages | where_exp: "p", "p.url contains section_path" | where_exp: "p", "p.url != page.url" | sort: "order" %}
+    {% for p in pages_list %}
+    {% unless p.title == nil or p.exclude_from_list == true %}
+    <a href="{{ p.url | relative_url }}" class="section-card">
+      <div class="section-card-inner">
+        {% if p.icon %}
+        <span class="section-card-icon">{{ p.icon }}</span>
+        {% endif %}
+        <h3 class="section-card-title">{{ p.title }}</h3>
+        {% if p.description %}
+        <p class="section-card-desc">{{ p.description }}</p>
+        {% endif %}
+        <span class="section-card-arrow">→</span>
+      </div>
+    </a>
+    {% endunless %}
+    {% endfor %}
+  </div>
+</article>

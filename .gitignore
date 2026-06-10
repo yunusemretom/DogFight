@@ -56,6 +56,12 @@ gps_log_*.csv
 *.swo
 *.deb
 
+# ---- Jekyll ----
+docs/_site/
+docs/.jekyll-cache/
+docs/.jekyll-metadata
+docs/Gemfile.lock
+
 # ---- Experiment outputs ----
 experiments/*/outputs/
 compare_outputs/
