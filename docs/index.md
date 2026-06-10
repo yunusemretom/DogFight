@@ -59,7 +59,7 @@ description: "PX4 + ROS 2 ile RC Uçak Hedef Takip Sistemi"
   </a>
 </div>
 
-<div class="fade-in" markdown="1">
+<div class="page-body fade-in" markdown="1">
 
 ## 📸 ROS 2 Paketleri
 
