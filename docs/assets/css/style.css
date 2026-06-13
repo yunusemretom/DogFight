@@ -442,12 +442,21 @@ a:hover {
 }
 
 .hero-logo {
-  width: 100px;
-  height: 100px;
-  border-radius: 20px;
-  margin-bottom: 24px;
+  display: block;
+  margin: 0 auto 28px;
+  width: 120px;
+  height: 120px;
+  border-radius: 24px;
+  border: 1px solid var(--line);
+  background: var(--bg-raised);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(63, 184, 175, 0.15);
   animation: float 6s ease-in-out infinite;
   position: relative;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+.hero-logo:hover {
+  transform: scale(1.06);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6), 0 0 28px rgba(63, 184, 175, 0.3);
 }
 
 @keyframes float {
