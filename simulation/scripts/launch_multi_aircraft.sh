@@ -7,19 +7,16 @@
 set -e
 
 # ==================== YAPILANDIRMA ====================
-PX4_DIR="${PX4_DIR:-$HOME/Desktop/PX4-Autopilot}"
+PX4_DIR="${PX4_DIR:-$HOME/PX4-Autopilot}"
 BUILD_DIR="$PX4_DIR/build/px4_sitl_default"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 SIMULATION_WS="$(dirname "$SCRIPT_DIR")"
-SIMULATION_MODELS="$SIMULATION_WS/models"
-WORLD_FILE="$SIMULATION_WS/worlds/iris_runway.sdf"
-source ~/Desktop/PX4-Autopilot/build/px4_sitl_default/rootfs/gz_env.sh
-#PX4_DIR="${PX4_DIR:-$HOME/Desktop/PX4-Autopilot}"
-#BUILD_DIR="$PX4_DIR/build/px4_sitl_default"
-#SIMULATION_WS="/home/tom/Documents/Dog_Fight/gazebo_simulation"
-#SIMULATION_MODELS="$SIMULATION_WS/models"
-#WORLD_FILE="$SIMULATION_WS/worlds/baylands.sdf"
- #Hero uçak için kameralı özel model
+SIMULATION_MODELS="$SIMULATION_WS/gazebo/models"
+WORLD_FILE="$SIMULATION_WS/gazebo/worlds/default.sdf"
+
+# gz_env.sh will be dynamically sourced in check_prerequisites once build exists
+
+#Hero uçak için kameralı özel model
 HERO_MODEL="rc_cessna"
 
 AIRFRAME_ID=4003  # gz_rc_cessna
@@ -54,6 +51,9 @@ cleanup() {
     # MAVLink router
     pkill -9 -f "mavlink-routerd" 2>/dev/null || true
     
+    # ROS 2 Gazebo Köprüsü
+    pkill -9 -f "ros_gz_bridge" 2>/dev/null || true
+    
     echo -e "${GREEN}[CLEANUP]${NC} Tamamlandı."
     exit 0
 }
@@ -66,7 +66,7 @@ check_prerequisites() {
     if [ ! -f "$BUILD_DIR/bin/px4" ]; then
         echo -e "${YELLOW}[BUILD]${NC} PX4 build bulunamadı. Derleniyor..."
         cd "$PX4_DIR"
-        make px4_sitl gz_rc_cessna
+        make px4_sitl_default
     fi
     
     # World dosyası kontrolü
@@ -75,32 +75,70 @@ check_prerequisites() {
         exit 1
     fi
     
+    # gz_env.sh dosyasını source et
+    local GZ_ENV_FILE="$BUILD_DIR/rootfs/gz_env.sh"
+    if [ -f "$GZ_ENV_FILE" ]; then
+        source "$GZ_ENV_FILE"
+    else
+        echo -e "${RED}[ERROR]${NC} Gazebo ortam dosyası bulunamadı: $GZ_ENV_FILE"
+        echo "Lütfen PX4 build'ini kontrol edin."
+        exit 1
+    fi
+    
     echo -e "${GREEN}[CHECK]${NC} Ön kontroller tamam."
+}
+
+start_bridge() {
+    echo -e "${CYAN}[BRIDGE]${NC} ROS 2 Gazebo Köprüsü başlatılıyor..."
+    
+    # HERO uçağı için kamera görüntüsünü köprüle (Instance 1 -> rc_cessna_1)
+    ros2 run ros_gz_bridge parameter_bridge \
+        "/world/default/model/rc_cessna_1/link/camera_link/sensor/camera/image@sensor_msgs/msg/Image[gz.msgs.Image" \
+        > "$LOG_DIR/ros_gz_bridge.log" 2>&1 &
+    
+    sleep 2
+    if ! pgrep -f "ros_gz_bridge" > /dev/null; then
+        echo -e "${RED}[ERROR]${NC} ROS 2 Gazebo Köprüsü başlatılamadı!"
+        echo "Log: $LOG_DIR/ros_gz_bridge.log"
+        cat "$LOG_DIR/ros_gz_bridge.log" | tail -20
+    else
+        echo -e "${GREEN}[BRIDGE]${NC} ROS 2 Gazebo Köprüsü hazır."
+    fi
 }
 
 start_gazebo() {
     echo -e "${CYAN}[GAZEBO]${NC} Gazebo Harmonic başlatılıyor..."
     
     # Model path'i ayarla
-    export GZ_SIM_RESOURCE_PATH="${SIMULATION_MODELS}:$SIMULATION_WS/worlds:${PX4_DIR}/Tools/simulation/gz/models:${PX4_DIR}/Tools/simulation/gz/worlds:$GZ_SIM_RESOURCE_PATH:$PX4_GZ_MODELS:$PX4_GZ_WORLDS"
+    export GZ_SIM_RESOURCE_PATH="${SIMULATION_MODELS}:$SIMULATION_WS/gazebo/worlds:${PX4_DIR}/Tools/simulation/gz/models:${PX4_DIR}/Tools/simulation/gz/worlds:$GZ_SIM_RESOURCE_PATH:$PX4_GZ_MODELS:$PX4_GZ_WORLDS"
     
-    # Gazebo'yu başlat
-    gz sim -v 1 -r "$WORLD_FILE" > "$LOG_DIR/gazebo.log" 2>&1 &
+    # Gazebo sunucusunu (headless/server) başlat
+    gz sim -v 1 -s -r "$WORLD_FILE" > "$LOG_DIR/gazebo_server.log" 2>&1 &
     GAZEBO_PID=$!
     
-    # Gazebo'nun başlamasını bekle
-    echo -e "${YELLOW}[GAZEBO]${NC} Gazebo yükleniyor (10 saniye)..."
-    sleep 20
+    # Sunucunun başlaması için kısa bir süre bekle
+    sleep 5
+    
+    # Gazebo arayüzünü (GUI client) ayrı bir işlem olarak başlat (deadlock/donmaları önlemek için)
+    gz sim -g > "$LOG_DIR/gazebo_gui.log" 2>&1 &
+    GUI_PID=$!
+    
+    # Gazebo sunucusunun hazır olmasını bekle
+    echo -e "${YELLOW}[GAZEBO]${NC} Gazebo sunucusu yükleniyor (15 saniye)..."
+    sleep 15
     
     # Kontrol
-    if ! pgrep -f "gz sim" > /dev/null; then
-        echo -e "${RED}[ERROR]${NC} Gazebo başlatılamadı!"
-        echo "Log: $LOG_DIR/gazebo.log"
-        cat "$LOG_DIR/gazebo.log" | tail -20
+    if ! kill -0 $GAZEBO_PID 2>/dev/null; then
+        echo -e "${RED}[ERROR]${NC} Gazebo sunucusu başlatılamadı!"
+        echo "Log: $LOG_DIR/gazebo_server.log"
+        cat "$LOG_DIR/gazebo_server.log" | tail -20
         exit 1
     fi
     
-    echo -e "${GREEN}[GAZEBO]${NC} Gazebo hazır."
+    echo -e "${GREEN}[GAZEBO]${NC} Gazebo sunucusu hazır."
+    
+    # ROS 2 Köprüsünü Başlat
+    start_bridge
 }
 
 launch_aircraft() {
@@ -130,7 +168,8 @@ launch_aircraft() {
         export PX4_SYS_AUTOSTART=${AIRFRAME_ID}
         export PX4_GZ_MODEL="${MODEL}"
         export PX4_GZ_MODEL_POSE="${X},${Y},${Z},0,0,${YAW}"
-        export PX4_GZ_WORLD=$WORLD_FILE
+        export PX4_GZ_WORLD="default"
+        export PX4_GZ_STANDALONE=1
         export PX4_SIM_SPEED_FACTOR=1
         export PX4_HOME_LAT=${HOME_LAT}
         export PX4_HOME_LON=${HOME_LON}
@@ -153,7 +192,7 @@ wait_for_models() {
     echo -e "${YELLOW}[WAIT]${NC} Modellerin spawn olması bekleniyor..."
     
     while [ $WAITED -lt $MAX_WAIT ]; do
-        MODELS=$(gz model --list 2>/dev/null | grep -c "cessna" || echo "0")
+        MODELS=$(gz model --list 2>/dev/null | grep "cessna" | wc -l)
         if [ "$MODELS" -ge 3 ]; then
             echo -e "${GREEN}[WAIT]${NC} 3 uçak spawn edildi!"
             return 0
@@ -179,16 +218,16 @@ print_status() {
     done
     echo ""
     echo -e "${YELLOW}QGroundControl Bağlantıları:${NC}"
-    echo "  Uçak 1 (HERO):   udp://127.0.0.1:14540"
-    echo "  Uçak 2 (ENEMY1): udp://127.0.0.1:14541"
-    echo "  Uçak 3 (ENEMY2): udp://127.0.0.1:14542"
+    echo "  Uçak 1 (HERO):   udp://127.0.0.1:14541"
+    echo "  Uçak 2 (ENEMY1): udp://127.0.0.1:14542"
+    echo "  Uçak 3 (ENEMY2): udp://127.0.0.1:14543"
     echo ""
     echo -e "${YELLOW}QGC Ayarları:${NC}"
     echo "  1. QGroundControl açın"
     echo "  2. Application Settings > Comm Links"
     echo "  3. Her uçak için yeni UDP bağlantısı ekleyin:"
     echo "     - Type: UDP"
-    echo "     - Port: 14540, 14541, 14542"
+    echo "     - Port: 14541, 14542, 14543"
     echo "     - Automatically connect: ON"
     echo ""
     echo -e "${YELLOW}Takeoff Prosedürü (Her uçak için ayrı ayrı):${NC}"
@@ -203,7 +242,7 @@ print_status() {
 }
 
 # ==================== ANA PROGRAM ====================
-clear
+# clear
 echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
 echo -e "${GREEN}     TEKNOFEST Multi-Aircraft Simulation Launcher${NC}"
 echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
@@ -233,17 +272,12 @@ start_gazebo
 # Pist 04 yönü: ~40° heading = 0.698 radyan
 echo -e "${YELLOW}[4/5]${NC} Uçaklar spawn ediliyor..."
 
-# HERO (GUCLU) - Ana uçak - KAMERALI
-#            Instance  Name      X    Y     Z     Yaw(rad)  Model
-launch_aircraft 0     "HERO"    0    0    0.3    0.698     "${HERO_MODEL}"
-sleep 15  # İlk uçak için daha uzun bekle
-
 # ENEMY 1 (KOUSTECH) - Sağda
-launch_aircraft 1     "ENEMY1"  -5   10   0.3    0.698     "rc_cessna"
+launch_aircraft 2     "ENEMY1"  -5   10   0.3    0.698     "rc_cessna"
 sleep 10
 #6.1-5.1
 # ENEMY 2 (ITU_ATA) - Solda
-launch_aircraft 2     "ENEMY2"  5   -10   0.3    0.698     "rc_cessna"
+launch_aircraft 3     "ENEMY2"  5   -10   0.3    0.698     "rc_cessna"
 sleep 10
 #12.3-10.3
 # Model kontrolü
@@ -258,7 +292,7 @@ while true; do
     sleep 5
     
     # Sağlık kontrolü
-    if ! pgrep -f "gz sim" > /dev/null; then
+    if ! kill -0 $GAZEBO_PID 2>/dev/null; then
         echo -e "${RED}[ERROR]${NC} Gazebo kapandı!"
         exit 1
     fi

@@ -48,10 +48,8 @@ log "Sistem güncelleniyor..."
 sudo apt update
 sudo apt upgrade -y
 
-#YGYJKYJKYYY
 
 # PX4 Kurulumu
-ZZN
 #############################################
 
 PX4_DIR="$HOME/PX4-Autopilot"
@@ -61,10 +59,7 @@ log "PX4 indiriliyor..."
 cd "$HOME"
 git clone https://github.com/PX4/PX4-Autopilot.git --recursive
 else
-log "PX4 zaten mevcut, güncelleniyor..."
-cd "$PX4_DIR"
-git pull
-git submodule update --init --recursive
+log "PX4 zaten mevcut. Güncelleme yerel değişiklikleri korumak için atlanıyor."
 fi
 
 log "PX4 bağımlılıkları kuruluyor..."
@@ -83,7 +78,6 @@ make px4_sitl_default
 if [ ! -d "/opt/ros/humble" ]; then
 log "ROS2 Humble kuruluyor..."
 
-```
 sudo apt install -y locales
 sudo locale-gen en_US en_US.UTF-8
 sudo update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
@@ -106,11 +100,15 @@ $(. /etc/os-release && echo $UBUNTU_CODENAME) main" \
 
 sudo apt update
 sudo apt install -y ros-humble-desktop ros-dev-tools
-```
 
 else
 log "ROS2 zaten kurulu."
 fi
+
+# Gazebo ROS 2 Köprü ve CV Bridge Kurulumu
+log "Gazebo ROS 2 Köprü ve CV Bridge paketleri kuruluyor..."
+sudo apt update
+sudo apt install -y ros-humble-ros-gzharmonic ros-humble-ros-gzharmonic-bridge ros-humble-cv-bridge
 
 #############################################
 
@@ -132,6 +130,7 @@ source /opt/ros/humble/setup.bash
 
 log "Python bağımlılıkları kuruluyor..."
 pip3 install --user -U empy==3.3.4 pyros-genmsg setuptools
+pip3 install --user -U ultralytics opencv-python supervision rfdetr torch
 
 #############################################
 
