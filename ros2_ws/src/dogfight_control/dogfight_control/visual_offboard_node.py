@@ -1,195 +1,140 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 ############################################################################
 #
-#   Copyright (C) 2022 PX4 Development Team. All rights reserved.
+#   visual_offboard_node — görsel tespit → offboard köprü test node'u.
 #
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
+#   Girdi: /yolo/target_distance (geometry_msgs/Point)
+#     x = hedefin görüntü merkezine yatay uzaklığı [px]  (+ = sağda)
+#     y = hedefin görüntü merkezine dikey uzaklığı [px]  (+ = aşağıda)
+#     z = tespit güveni (confidence)
 #
-# 1. Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-# 2. Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in
-#    the documentation and/or other materials provided with the
-#    distribution.
-# 3. Neither the name PX4 nor the names of its contributors may be
-#    used to endorse or promote products derived from this software
-#    without specific prior written permission.
+#   Çıkış: PX4 v1.16 sabit kanat offboard reçetesi (l1_pursuit_node ile aynı):
+#     - OffboardControlMode.velocity=true, TrajectorySetpoint YAYINLANMAZ
+#       → FixedWingModeManager pasif, setpoint'ler FwLateralLongitudinalControl'e.
+#     - FixedWingLateralSetpoint.lateral_acceleration = kp_lateral * px_x
+#       (hedef sağda → sağa yanal ivme)
+#     - FixedWingLongitudinalSetpoint.height_rate = -kp_height * px_y
+#       (hedef aşağıda → alçal), airspeed sabit cruise.
 #
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-# COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
-# OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
-# AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
-# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-# POSSIBILITY OF SUCH DAMAGE.
+#   Eski node'daki düzeltilen hatalar:
+#     - vel_z'ye yanlışlıkla vel_x yazılıyordu (kopyala-yapıştır).
+#     - Dikey görüntü hatası ileri hıza bağlanmıştı (eksen karışıklığı).
+#     - Timeout'ta (0,0,0) hız komutu = sabit kanatta stall; şimdi timeout'ta
+#       kanat düz + irtifa koru + cruise hızla uçuş sürer (base HOLD durumu).
+#     - NED hız komutu FW'de mode manager'ı tetikliyordu (tuzak #6).
 #
 ############################################################################
-
-__author__ = "Jaeyoung Lim"
-__contact__ = "jalim@ethz.ch"
 
 import rclpy
-import numpy as np
-from rclpy.node import Node
-from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy, QoSDurabilityPolicy
-
-from px4_msgs.msg import OffboardControlMode
-from px4_msgs.msg import TrajectorySetpoint
-from px4_msgs.msg import VehicleStatus
 from geometry_msgs.msg import Point
+from px4_msgs.msg import FixedWingLateralSetpoint, FixedWingLongitudinalSetpoint
 
-import math
-import time
-class OffboardControl(Node):
+from dogfight_control.offboard_base import OffboardTestBase
+from dogfight_control.control_math import clamp
+
+NAN = float('nan')
+
+
+class VisualOffboardNode(OffboardTestBase):
 
     def __init__(self):
-        super().__init__('minimal_publisher')
+        # Hedef başka araç değil görsel tespit — araç aboneliği yok
+        super().__init__('visual_offboard_node',
+                         ocm_flags={'velocity': True},
+                         subscribe_target=False)
 
-                # QoS profiles
-        qos_profile_pub = QoSProfile(
-            reliability=QoSReliabilityPolicy.BEST_EFFORT,
-            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
-            history=QoSHistoryPolicy.KEEP_LAST,
-            depth=0
-        )
+        p = self.declare_parameter
+        p('detection_topic', '/yolo/target_distance')
+        p('min_confidence', 0.3)       # bu güvenin altındaki tespitler atılır
+        p('kp_lateral', 0.05)          # px → yanal ivme [m/s² / px]
+        p('max_lateral_accel', 8.0)    # yanal ivme limiti [m/s²] (~39° roll)
+        p('kp_height_rate', 0.02)      # px → tırmanma hızı [m/s / px]
+        p('max_height_rate', 3.0)      # tırmanma/alçalma limiti [m/s]
+        p('cruise_airspeed', 15.0)     # sabit airspeed komutu [m/s]
 
-        qos_profile_sub = QoSProfile(
-            reliability=QoSReliabilityPolicy.BEST_EFFORT,
-            durability=QoSDurabilityPolicy.VOLATILE,
-            history=QoSHistoryPolicy.KEEP_LAST,
-            depth=0
-        )
+        gp = lambda n: self.get_parameter(n).value
+        self.min_conf = float(gp('min_confidence'))
+        self.kp_lat = float(gp('kp_lateral'))
+        self.max_lat_acc = float(gp('max_lateral_accel'))
+        self.kp_hr = float(gp('kp_height_rate'))
+        self.max_hr = float(gp('max_height_rate'))
+        self.cruise_aspd = float(gp('cruise_airspeed'))
 
-        # YOLO distance verilerini subscribe et
-        self.distance_sub = self.create_subscription(
-            Point,
-            '/yolo/target_distance',
-            self.distance_callback,
-            qos_profile_sub)
-        
-        self.status_sub = self.create_subscription(
-            VehicleStatus,
-            'fmu/out/vehicle_status',
-            self.vehicle_status_callback,
-            qos_profile_sub)
-        self.status_sub = self.create_subscription(
-            VehicleStatus,
-            'fmu/out/vehicle_status_v1',
-            self.vehicle_status_callback,
-            qos_profile_sub)
-        self.publisher_offboard_mode = self.create_publisher(OffboardControlMode, 'fmu/in/offboard_control_mode', qos_profile_pub)
-        self.publisher_trajectory = self.create_publisher(TrajectorySetpoint, 'fmu/in/trajectory_setpoint', qos_profile_pub)
-        timer_period = 0.02  # seconds
-        self.timer = self.create_timer(timer_period, self.cmdloop_callback)
-        self.dt = timer_period
-        self.declare_parameter('radius', 10.0)
-        self.declare_parameter('omega', 5.0)
-        self.declare_parameter('altitude', 5.0)
-        self.nav_state = VehicleStatus.NAVIGATION_STATE_MAX
-        self.arming_state = VehicleStatus.ARMING_STATE_DISARMED
-        # Note: no parameter callbacks are used to prevent sudden inflight changes of radii and omega
-        # which would result in large discontinuities in setpoints
-        self.theta = 0.0
-        self.radius = self.get_parameter('radius').value
-        self.omega = self.get_parameter('omega').value
-        self.altitude = self.get_parameter('altitude').value
-        
-        # YOLO'dan gelen veriler
-        self.distance_x = 0.0
-        self.distance_y = 0.0
-        self.last_detection_time = time.time()
-        self.detection_timeout = 0.5  # 0.5 saniye veri gelmezse sıfırla
-        
-    def distance_callback(self, msg):
-        """YOLO'dan gelen merkeze uzaklık verilerini al"""
-        self.distance_x = msg.x
-        self.distance_y = msg.y
-        self.last_detection_time = time.time()
-        self.get_logger().info(f'YOLO verisi alındı: dx={msg.x:.1f}, dy={msg.y:.1f}, conf={msg.z:.2f}')
+        self.px_x = 0.0
+        self.px_y = 0.0
+        self._det_t = -1.0e9
 
-    def vehicle_status_callback(self, msg):
-        # TODO: handle NED->ENU transformation
-        print("NAV_STATUS: ", msg.nav_state)
-        print("  - offboard status: ", VehicleStatus.NAVIGATION_STATE_OFFBOARD)
-        self.nav_state = msg.nav_state
-        self.arming_state = msg.arming_state
+        self.create_subscription(Point, str(gp('detection_topic')),
+                                 self._detection_cb, 10)
 
-    def cmdloop_callback(self):
-        # Publish offboard control modes
-        offboard_msg = OffboardControlMode()
-        offboard_msg.timestamp = int(self.get_clock().now().nanoseconds / 1000)
-        offboard_msg.position=False
-        offboard_msg.velocity=True
-        offboard_msg.acceleration=False
-        self.publisher_offboard_mode.publish(offboard_msg)
-        
-        # Veri gelme süresini kontrol et
-        time_since_detection = time.time() - self.last_detection_time
-        
-        if (self.nav_state == VehicleStatus.NAVIGATION_STATE_OFFBOARD and self.arming_state == VehicleStatus.ARMING_STATE_ARMED):
+        f = self.follower_ns
+        self.pub_lat = self.create_publisher(
+            FixedWingLateralSetpoint,
+            f + '/fmu/in/fixed_wing_lateral_setpoint', self.qos)
+        self.pub_lon = self.create_publisher(
+            FixedWingLongitudinalSetpoint,
+            f + '/fmu/in/fixed_wing_longitudinal_setpoint', self.qos)
 
-            trajectory_msg = TrajectorySetpoint()
-            # Position KULLANMIYORUZ
-            trajectory_msg.position[0] = math.nan
-            trajectory_msg.position[1] = math.nan
-            trajectory_msg.position[2] = math.nan
+        self.get_logger().info(
+            f"VisualOffboard testi | takipçi='{f or '/'}' "
+            f"tespit='{gp('detection_topic')}' aspd={self.cruise_aspd}m/s")
 
-            # Velocity KULLANIYORUZ - YOLO verilerine göre ayarla
-            if time_since_detection > self.detection_timeout:
-                # Veri gelmiyorsa tüm velocity değerleri 0
-                trajectory_msg.velocity[0] = 0.0
-                trajectory_msg.velocity[1] = 0.0
-                trajectory_msg.velocity[2] = 0.0
-                self.get_logger().warn('YOLO verisi gelmiyor - Duruluyor')
-            else:
-                # YOLO verilerine göre velocity hesapla
-                # distance_x: pozitif = hedef sağda, negatif = hedef solda
-                # distance_y: pozitif = hedef aşağıda, negatif = hedef yukarıda
-                
-                # Gain değerleri (hız kontrolü için)
-                kp_x = 0.005  # X ekseni kazancı
-                kp_y = 0.005  # Y ekseni kazancı
-                
-                # Velocity hesapla (basit orantılı kontrol)
-                vel_x = -kp_x * self.distance_y # Sabit ileri hız
-                vel_y = kp_y * self.distance_x  # Yatay (sağ/sol) hareket - NED koordinat sistemi
-                vel_z = 0  # Dikey (yukarı/aşağı) hareket - NED koordinat sistemi
-                
-                # Hız limitleri
-                max_vel_lateral = 10.0
-                max_vel_vertical = 10.0
-                
-                vel_y = max(-max_vel_lateral, min(max_vel_lateral, vel_y))
-                vel_z = max(-max_vel_vertical, min(max_vel_vertical, vel_x))
-                
-                trajectory_msg.velocity[0] = vel_x    # İleri
-                trajectory_msg.velocity[1] = vel_y    # Sağ/Sol
-                trajectory_msg.velocity[2] = vel_z    # Yukarı/Aşağı
-                
-                self.get_logger().info(f'Velocity: vx={vel_x:.2f}, vy={vel_y:.2f}, vz={vel_z:.2f}')
+    # Hedef tazeliği görsel tespit zamanından gelir
+    def target_fresh(self, now: float) -> bool:
+        return (now - self._det_t) < self.tgt_timeout
 
-            
-            self.publisher_trajectory.publish(trajectory_msg)
+    def _detection_cb(self, msg: Point):
+        if msg.z < self.min_conf:
+            return
+        self.px_x = float(msg.x)
+        self.px_y = float(msg.y)
+        self._det_t = self._now()
 
-            self.theta = self.theta + self.omega * self.dt
+    def _publish_fw(self, ts, lateral_accel, height_rate):
+        lat = FixedWingLateralSetpoint()
+        lat.timestamp = ts
+        lat.course = NAN
+        lat.airspeed_direction = NAN
+        lat.lateral_acceleration = float(lateral_accel)
+        self.pub_lat.publish(lat)
+
+        lon = FixedWingLongitudinalSetpoint()
+        lon.timestamp = ts
+        lon.altitude = NAN            # NaN → irtifa height_rate ile sürülür
+        lon.height_rate = float(height_rate)
+        lon.equivalent_airspeed = float(self.cruise_aspd)
+        lon.pitch_direct = NAN
+        lon.throttle_direct = NAN
+        self.pub_lon.publish(lon)
+
+    def publish_idle(self, ts):
+        # Tespit yok: kanat düz, irtifayı koru, cruise hızda uç (stall YOK)
+        self._publish_fw(ts, 0.0, 0.0)
+
+    def publish_active(self, ts):
+        a_lat = clamp(self.kp_lat * self.px_x,
+                      -self.max_lat_acc, self.max_lat_acc)
+        # Hedef görüntüde aşağıda (+y) → alçal (height_rate yukarı +)
+        h_rate = clamp(-self.kp_hr * self.px_y, -self.max_hr, self.max_hr)
+        self._publish_fw(ts, a_lat, h_rate)
+
+        self.get_logger().info(
+            f'[VIS] px=({self.px_x:+.0f},{self.px_y:+.0f})  '
+            f'a_lat={a_lat:+.2f}m/s²  h_rate={h_rate:+.2f}m/s',
+            throttle_duration_sec=1.0)
 
 
 def main(args=None):
     rclpy.init(args=args)
-
-    offboard_control = OffboardControl()
-
-    rclpy.spin(offboard_control)
-
-    offboard_control.destroy_node()
-    rclpy.shutdown()
+    node = VisualOffboardNode()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':

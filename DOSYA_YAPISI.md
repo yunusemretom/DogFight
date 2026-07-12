@@ -21,15 +21,20 @@ DogFight/
 │       │       ├── gps_tracker_node.py     # İki aracın GPS'ini izleyip CSV loglayan yardımcı
 │       │       └── visual_tracker_node.py  # Görsel takip (kamera tabanlı) — entegrasyonu tamamlanmadı
 │       │
-│       ├── dogfight_control/        # Kontrol denemeleri paketi (çoğu eski/deneysel)
+│       ├── dogfight_control/        # Offboard arayüz TEST node'ları (2026-07-12 temiz yazım; üretim takibi l1_pursuit_node'da)
+│       │   ├── archive/
+│       │   │   └── fw_pursuit_node.py          # ESKİ pure-pursuit — arşiv, entry point'i yok
+│       │   ├── test/                           # pytest birim + smoke testleri (SITL gerektirmez)
+│       │   │   ├── test_control_math.py
+│       │   │   └── test_nodes_smoke.py
 │       │   └── dogfight_control/
-│       │       ├── fw_pursuit_node.py          # ESKİ pure-pursuit (velocity setpoint) — l1_pursuit_node ile değiştirildi
-│       │       ├── attitude_controller_node.py # Attitude offboard denemesi
-│       │       ├── velocity_controller_node.py # Velocity offboard denemesi
-│       │       ├── position_controller_node.py # Position offboard denemesi
-│       │       ├── visual_offboard_node.py     # Görsel veri → offboard köprü denemesi
-│       │       ├── deneme.py                   # Karalama (temizlenebilir)
-│       │       └── files.zip                   # Karalama (temizlenebilir)
+│       │       ├── control_math.py             # Saf matematik (PID, follow_point, NED dönüşümü) — ROS'suz test edilir
+│       │       ├── offboard_base.py            # Ortak taban: durum makinesi, v1.16 topic varyantları, arm/offboard
+│       │       ├── attitude_setpoint_node.py   # VehicleAttitudeSetpoint testi (SITL doğrulamalı)
+│       │       ├── trajectory_velocity_node.py # TrajectorySetpoint.velocity testi (FW'de mode manager devrede — gözlem amaçlı)
+│       │       ├── trajectory_position_node.py # TrajectorySetpoint.position testi (aynı sınırlama)
+│       │       ├── visual_offboard_node.py     # Görsel tespit → FW lateral/longitudinal köprüsü
+│       │       └── px4_status_monitor.py       # Durum monitörü (eski deneme.py'nin düzenlenmişi)
 │       │
 │       ├── dogfight_detection/      # Nesne tespiti paketi
 │       │   └── dogfight_detection/
@@ -52,6 +57,7 @@ DogFight/
 │   │   ├── rfdetr-rehberi.md        #   order 3
 │   │   ├── yolo-rehberi.md          #   order 4
 │   │   ├── l1-takip-rehberi.md      #   order 5 — ★ L1 algoritması + güvenlik önlemleri
+│   │   ├── dogfight-control-rehberi.md   #   order 6 — offboard test node'ları mimarisi + SITL sonuçları
 │   │   └── px4_ros2_fixedwing_rehber.md  # PX4+ROS2 fixed-wing genel rehberi (front-matter'sız)
 │   ├── experiments/ · tools/        # Deney ve araç dokümanları
 │   └── _layouts/ · _includes/ · assets/  # Jekyll tema

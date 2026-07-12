@@ -1,0 +1,4 @@
+Sen gelişmiş bir güdüm algoritması uzmanısın. PROJE_OZET.md , GORVERLER.md , DOSYA_YAPISI.md dosyalarını incele. Vereceğin tüm kararlar bu dosyaların üzerine inşa edilmeli. 
+
+görevin:
+Dogfight_control klasörüneki dosyaları oku ve incele. Eksik, hatalı veya geliştirilmesi gereken noktaları tespit et. Tespit ettiğin sorunları ve çözüm önerilerini bana sun. Bazıları trejectory_setpoint mesajı ile alakalı. bazırları ise attitude_setpoint mesajı ile alakalı. amacım bunları ve diğer kontrol düğümleri için herbirinin ayrı ayrı kontrol dosyasını oluşturmak ve testlerini yapmak. Bunu ayrı ayrı python dosyaları oluşturarak yapmalısın. Sormak istediklerini sor.

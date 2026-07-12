@@ -24,10 +24,11 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'attitude_controller_node = dogfight_control.attitude_controller_node:main',
-            'velocity_controller_node = dogfight_control.velocity_controller_node:main',
-            'position_controller_node = dogfight_control.position_controller_node:main',
+            'attitude_setpoint_node = dogfight_control.attitude_setpoint_node:main',
+            'trajectory_velocity_node = dogfight_control.trajectory_velocity_node:main',
+            'trajectory_position_node = dogfight_control.trajectory_position_node:main',
             'visual_offboard_node = dogfight_control.visual_offboard_node:main',
+            'px4_status_monitor = dogfight_control.px4_status_monitor:main',
         ],
     },
 )
