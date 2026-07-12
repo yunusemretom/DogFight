@@ -10,7 +10,7 @@ Bu rehber, `dogfight_control` paketinin **2026-07-12 temiz yeniden yazımını**
 
 - **Kod:** `ros2_ws/src/dogfight_control/dogfight_control/`
 - **Amaç:** PX4 v1.16'nın farklı offboard arayüzlerini (**attitude setpoint**, **trajectory position/velocity**, **görsel → FW lateral/longitudinal**) hedef takibi senaryosunda ayrı ayrı, kontrollü test etmek.
-- **Not:** Bunlar **test/deney node'larıdır**. Üretim takip kontrolcüsü `dogfight_tracking/l1_pursuit_node`'dur (bkz. [L1 Takip Rehberi](l1-takip-rehberi.html)).
+- **Not:** Bunlar **test/deney node'larıdır**. Üretim takip kontrolcüsü `dogfight_tracking/l1_pursuit_node`'dur (bkz. [L1 Takip Rehberi](../l1-takip-rehberi/)).
 
 ---
 
@@ -143,7 +143,8 @@ ros2 run dogfight_control px4_status_monitor --ros-args -p vehicle_ns:=/px4_1
 - **ROS'tan `VEHICLE_CMD_NAV_TAKEOFF` SITL'de kalkış tetiklemiyor** (ARM ve DO_SET_MODE işliyor). Kalkışı elle verin: `px4-commander --instance N takeoff` — node 15 m'de offboard'u kendisi devralır.
 - **rc_cessna Hold/loiter modunda spiralle yere iniyor.** Dönen hedef gerekiyorsa hedef aracı da offboard'da uçurun: sabit `lateral_acceleration=3 m/s²` + sabit irtifa/airspeed → ~17° bank ile kararlı daire.
 - **Spawn pozisyonları pist üzerinde olmalı** (`-5,10` ve `5,-10`, yaw 0.698). Pist dışı spawn (ör. 20,20) kalkış koşusunda uçağı deviriyor.
-- **Failsafe paramları kalıcı değil:** her SITL kurulumunda iki instance'ta da `NAV_DLL_ACT=0`, `COM_RCL_EXCEPT=4` set edin (yalnızca SITL; gerçek uçuşta geri alınır).
+- **[PX4 Firmware]
+Failsafe paramları kalıcı değil:** her SITL kurulumunda iki instance'ta da `NAV_DLL_ACT=0`, `COM_RCL_EXCEPT=4` set edin (yalnızca SITL; gerçek uçuşta geri alınır).
 
 ---
 
