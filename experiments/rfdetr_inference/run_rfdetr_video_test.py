@@ -2,18 +2,58 @@ import cv2
 import time
 from pathlib import Path
 import supervision as sv
+import os
+import torch
 from rfdetr import RFDETRSmall
+from rfdetr.config import RFDETRSmallConfig
 from rfdetr.assets.coco_classes import COCO_CLASSES
 #
 # 1. Modelin Başlatılması
 # RF-DETR mimarisi, transformer tabanlı bir nesne tespit modelidir.
-model = RFDETRSmall(
-    pretrain_weights="/home/tom/Downloads/checkpoint_best_regular.pth"
-)
+PRETRAIN = "/home/tom/Downloads/checkpoint_best_regular (5).pth"
+
+# If the checkpoint uses a different positional encoding size (PE) / resolution
+# than the default RFDETRSmall, detect it and pass a matching `resolution`
+# so positional embeddings load without size mismatch.
+detected_resolution = None
+try:
+    if os.path.isfile(PRETRAIN):
+        ckpt = torch.load(PRETRAIN, map_location="gpu")
+        # Prefer explicit args.positional_encoding_size when available
+        ckpt_args = ckpt.get("args")
+        if ckpt_args is not None:
+            pe = None
+            if isinstance(ckpt_args, dict):
+                pe = ckpt_args.get("positional_encoding_size")
+            else:
+                pe = getattr(ckpt_args, "positional_encoding_size", None)
+            if pe is not None:
+                patch_size = RFDETRSmallConfig().patch_size
+                detected_resolution = int(pe) * int(patch_size)
+        # Fallback: infer from saved position_embeddings tensor shape
+        if detected_resolution is None:
+            pos = ckpt.get("model", {}).get("backbone.0.encoder.encoder.embeddings.position_embeddings")
+            if pos is not None:
+                pe = getattr(pos, "shape", [None, None])[1]
+                if pe is not None:
+                    # pos.shape[1] == 1 + (patches_per_side ** 2)
+                    patches_sq = int(pe) - 1
+                    if patches_sq > 0:
+                        patches_side = int(round(patches_sq ** 0.5))
+                        patch_size = RFDETRSmallConfig().patch_size
+                        detected_resolution = int(patches_side) * int(patch_size)
+except Exception:
+    detected_resolution = None
+
+if detected_resolution is not None:
+    print(f"Configuring model to resolution={detected_resolution} to match checkpoint")
+    model = RFDETRSmall(pretrain_weights=PRETRAIN, resolution=detected_resolution)
+else:
+    model = RFDETRSmall(pretrain_weights=PRETRAIN)
 
 
 # Görselleştirme (OpenCV/Supervision) için numpy dizisi gereklidir (BGR)
-cap = cv2.VideoCapture("/home/tom/Downloads/istockphoto-2179703365-640_adpp_is.mp4")
+cap = cv2.VideoCapture("/home/tom/Documents/Projeler/İTU_Gökbörü/yolov8_deneme/denemevideo2.mp4")
 
 if not cap.isOpened():
     raise RuntimeError("Video acilamadi. Dosya yolunu kontrol edin.")

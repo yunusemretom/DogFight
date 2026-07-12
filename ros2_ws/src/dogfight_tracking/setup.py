@@ -25,6 +25,7 @@ setup(
     entry_points={
         'console_scripts': [
             'gps_tracker_node = dogfight_tracking.gps_tracker_node:main',
+            'l1_pursuit_node = dogfight_tracking.l1_pursuit_node:main',
             'visual_tracker_node = dogfight_tracking.visual_tracker_node:main',
         ],
     },

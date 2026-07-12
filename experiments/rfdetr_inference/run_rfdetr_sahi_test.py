@@ -14,12 +14,12 @@ from rfdetr.assets.coco_classes import COCO_CLASSES
         5: "missile"}"""
 
 
-MODEL_WEIGHTS = "/home/tom/Downloads/rf_detr_colab_25_04_2026.pth"
+MODEL_WEIGHTS = "/home/tom/Downloads/checkpoint_best_regular (1).pth"
 CONF_THRESHOLD = 0.5
 RESIZE_SCALE = .5
 MONITOR_INDEX = 1  # 1 = ana ekran
 OUTPUT_FPS = 30.0
-OUTPUT_PATH = f"/home/tom/Documents/DogFight/ekran_tespit_sahi_{time.strftime('%Y%m%d_%H%M%S')}.mp4"
+OUTPUT_PATH = f"/home/tom/Documents/Projeler/DogFight/ekran_tespit_sahi_{time.strftime('%Y%m%d_%H%M%S')}.mp4"
 
 # SAHI benzeri dilimleme parametreleri
 SLICE_WIDTH = 640

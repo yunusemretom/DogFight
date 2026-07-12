@@ -170,7 +170,7 @@ launch_aircraft() {
         export PX4_GZ_MODEL_POSE="${X},${Y},${Z},0,0,${YAW}"
         export PX4_GZ_WORLD="default"
         export PX4_GZ_STANDALONE=1
-        export PX4_SIM_SPEED_FACTOR=1
+        export PX4_SIM_SPEED_FACTOR=1   
         export PX4_HOME_LAT=${HOME_LAT}
         export PX4_HOME_LON=${HOME_LON}
         export PX4_HOME_ALT=${HOME_ALT}

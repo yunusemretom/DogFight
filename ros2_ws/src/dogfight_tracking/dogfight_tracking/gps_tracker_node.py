@@ -42,14 +42,14 @@ class GPSTracker(Node):
         # Subscribers - Her iki araç için GPS dinle
         self.gps_sub1 = self.create_subscription(
             SensorGps,
-            "/px4_1/fmu/out/vehicle_gps_position",
+            "fmu/out/vehicle_gps_position",
             self.gps_callback_vehicle1,
             qos
         )
         
         self.gps_sub2 = self.create_subscription(
             SensorGps,
-            "/px4_3/fmu/out/vehicle_gps_position",
+            "/px4_1/fmu/out/vehicle_gps_position",
             self.gps_callback_vehicle2,
             qos
         )
