@@ -149,7 +149,7 @@ ros2 run dogfight_control px4_status_monitor --ros-args -p vehicle_ns:=/px4_1
 
 ## 4. SITL test sonuçları
 
-Ortam: Gazebo Harmonic + PX4 v1.16 SITL, 2 × rc_cessna. Hedef ~55 m AGL'de 3 m/s² yanal ivmeyle daire çizerken (offboard feeder), takipçi node'ları sırayla koşuldu.
+Ortam: Gazebo Harmonic + PX4 v1.16 SITL, 2 × rc_cessna. Hedef ~55 m AGL'de 3 m/s² yanal ivmeyle daire çizerken (offboard feeder), takipçi node'ları sırayla koşuldu. 
 
 | Node | Sonuç | Yorum |
 |---|---|---|
